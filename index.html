@@ -38,7 +38,7 @@
         // Clear the message box.
         document.getElementById("taOutput").value = "";
         // Set the initial values for our globals.
-        _Tokens = "";
+        _Tokens = [];
         _TokenIndex = 0;
         _CurrentToken = ' ';
         _ErrorCount = 0;
@@ -51,17 +51,14 @@
         // Note the <input> element's event handler: onclick="btnCompile_click();
         init();
         putMessage("Compilation Started");
-        // Grab the _Tokens from the lexer . . .
-        _Tokens = lex();
+        lex();
+
         putMessage("Lex returned [" + _Tokens + "]");
         // . . . and parse!
         parse();
     }
 
-    function putMessage(msg)
-    {
-        document.getElementById("taOutput").value += msg + "\n";
-    }
+
 
 
     function parse()

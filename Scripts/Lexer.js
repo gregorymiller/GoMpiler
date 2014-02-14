@@ -6,10 +6,19 @@
 
 function lex()
 {
+    var currentLine = 1;
     // Grab the "raw" source code.
     var sourceCode = document.getElementById("taSourceCode").value;
-    // Trim the leading and trailing spaces.
     sourceCode = trim(sourceCode);
-    // TODO: remove all spaces in the middle; remove line breaks too.
-    return sourceCode;
+
+    putMessage("Lexing has started.");
+
+    // Go through the source code then try to match the source code with a regular expression token
+    for (var i = 0; i < sourceCode.length; i++) {
+        for (var key in regExTokens) {
+            var tempRegEx = regExTokens[key].regex;
+            var tempType = regExTokens[key].type;
+        }
+
+    }
 }

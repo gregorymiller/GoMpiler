@@ -42,3 +42,8 @@ function rot13(str)     // An easy-to understand implementation of the famous an
     }
     return retVal;
 }
+
+function putMessage(msg)
+{
+    document.getElementById("taOutput").value += msg + "\n";
+}
