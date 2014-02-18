@@ -11,7 +11,7 @@ var notEqual = /^!=/;
 var trueValue = /^true/;
 var falseValue = /^false/;
 var digit = /^\d/;
-var space = /" "/;
+var space = /^ /;
 var char = /^[a-zA-Z]/;
 var int = /^int/;
 var string = /^string/;
@@ -25,9 +25,10 @@ var whileValue = /^while/;
 var print = /^print/;
 var leftBrace = /^\{/;
 var rightBrace = /^\}/;
-var endOfFile = /^$/;
-var newLine = /^(\n)(\r)/;
+var endOfFile = /^\$/;
+var newLine = /^(\n)(\r)?/;
 var tab = /^\t/;
+var id = /^[a-zA-Z]([a-zA-Z]|[0-9])*/;
 
 
 // JSON so that I can relate the regex with the type without a bunch of if statements
@@ -53,7 +54,8 @@ var regExTokens = { Int:        {regex: int,        type:"T_TYPE"},
                     RightBrace: {regex: rightBrace, type:"T_RIGHTBRACE"},
                     EndOfFile:  {regex: endOfFile,  type:"T_ENDOFLINE"},
                     NewLine:    {regex: newLine,    type:"T_NEWLINE"},
-                    Tab:        {regex: tab,        type:"T_TAB"}};
+                    Tab:        {regex: tab,        type:"T_TAB"},
+                    Id:         {regex: id,         type:"T_ID"}};
 
 
 function Token() {
@@ -83,4 +85,22 @@ function getNextToken()
         _TokenIndex++;
     }
     return thisToken;
+}
+
+function findNextToken(sourceCode) {
+    // Go through all of the regular expressions and test them to find a match
+    // If a match is found return the type and regex expression otherwise return null
+    for (var key in regExTokens) {
+        var tempRegEx = regExTokens[key].regex;
+        var tempType = regExTokens[key].type;
+
+        if (tempRegEx.test(sourceCode))
+        {
+            return [tempType, tempRegEx];
+        }
+    }
+
+    // I am not sure if it matters if I return two nulls but it makes me feel better that
+    // my other code will not fail
+    return [null, null];
 }
