@@ -52,7 +52,7 @@ var regExTokens = { Int:        {regex: int,        type:"T_TYPE"},
                     Assignment: {regex: assignment, type:"T_ASSIGNMENT"},
                     LeftBrace:  {regex: leftBrace,  type:"T_LEFTBRACE"},
                     RightBrace: {regex: rightBrace, type:"T_RIGHTBRACE"},
-                    EndOfFile:  {regex: endOfFile,  type:"T_ENDOFLINE"},
+                    EndOfFile:  {regex: endOfFile,  type:"T_ENDOFFILE"},
                     NewLine:    {regex: newLine,    type:"T_NEWLINE"},
                     Tab:        {regex: tab,        type:"T_TAB"},
                     Id:         {regex: id,         type:"T_ID"}};
@@ -62,6 +62,10 @@ function Token() {
     this.type = null;
     this.line = -1;
     this.value = null;
+
+    this.toString = function () {
+        return "Type: " + this.type + ", value: " + this.value + ", line: " + this.line;
+    }
 }
 
 // Add a token with a type, value, and its line then add it to the token array

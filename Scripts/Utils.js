@@ -47,3 +47,9 @@ function putMessage(msg)
 {
     document.getElementById("taOutput").value += msg + "\n";
 }
+
+function verbosePutMessage(msg)
+{
+    if (document.getElementById("chkVerbose").checked === true)
+        document.getElementById("taOutput").value += msg + "\n";
+}
