@@ -27,8 +27,6 @@ var leftBrace = /^\{/;
 var rightBrace = /^\}/;
 var endOfFile = /^\$/;
 var newLine = /^(\n)(\r)?/;
-var tab = /^\t/;
-var id = /^[a-zA-Z]([a-zA-Z]|[0-9])*/;
 
 
 // JSON so that I can relate the regex with the type without a bunch of if statements
@@ -53,9 +51,7 @@ var regExTokens = { Int:        {regex: int,        type:"T_TYPE"},
                     LeftBrace:  {regex: leftBrace,  type:"T_LEFTBRACE"},
                     RightBrace: {regex: rightBrace, type:"T_RIGHTBRACE"},
                     EndOfFile:  {regex: endOfFile,  type:"T_ENDOFFILE"},
-                    NewLine:    {regex: newLine,    type:"T_NEWLINE"},
-                    Tab:        {regex: tab,        type:"T_TAB"},
-                    Id:         {regex: id,         type:"T_ID"}};
+                    NewLine:    {regex: newLine,    type:"T_NEWLINE"}};
 
 
 function Token() {
@@ -65,7 +61,11 @@ function Token() {
 
     this.toString = function () {
         return "Type: " + this.type + ", value: " + this.value + ", line: " + this.line;
-    }
+    };
+
+    this.toStringType = function () {
+        return this.type;
+    };
 }
 
 // Add a token with a type, value, and its line then add it to the token array
@@ -78,20 +78,25 @@ function addToken(type, value, line) {
     _Tokens.push(tempToken);
 }
 
-function getNextToken()
+function parseGetNextToken()
 {
     var thisToken = EOF;    // Let's assume that we're at the EOF.
     if (_TokenIndex < _Tokens.length)
     {
         // If we're not at EOF, then return the next token in the stream and advance the index.
         thisToken = _Tokens[_TokenIndex];
-        putMessage("Current token:" + thisToken);
+        verbosePutMessage("Parsing current token:" + thisToken.toString());
         _TokenIndex++;
     }
     return thisToken;
 }
 
-function findNextToken(sourceCode) {
+// Look ahead one token
+function parseLookAheadOne() {
+    return _Tokens[_TokenIndex];
+}
+
+function lexFindNextToken(sourceCode) {
     // Go through all of the regular expressions and test them to find a match
     // If a match is found return the type and regex expression otherwise return null
     for (var key in regExTokens) {

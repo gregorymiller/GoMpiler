@@ -17,7 +17,7 @@ function lex()
     for (var x = 0; x < sourceCode.length; x++) {
         if (endOfFileMarker)
             stuffAfterEndOfFile = true;
-        if (sourceCode.charAt(x) === "$")
+        if (sourceCode.charAt(x) === EOF)
             endOfFileMarker = true;
     }
 
@@ -26,7 +26,7 @@ function lex()
     {
         putMessage("Error: No end of file located.");
         putMessage("Warning: End of file is being added to continue.");
-        sourceCode += "$";
+        sourceCode += EOF;
     }
     // If an end of file located and there are things after show a warning
     else if (endOfFileMarker && stuffAfterEndOfFile)
@@ -44,14 +44,17 @@ function lex()
 
     findAndAddTokens(sourceCode);
 
+
+    var tempListOfTokens = "";
     for (var i in _Tokens) {
-        putMessage("Lex returned [" + _Tokens[i].toString() + "]");
+        tempListOfTokens += _Tokens[i].toStringType() + ". ";
     }
+    putMessage("Lex returned: " + tempListOfTokens);
 
     // If no errors exist than parse otherwise stop
     if (_ErrorCount < 1)
     {
-        // Parse
+        parseProgram();
     }
     else
     {
@@ -68,7 +71,7 @@ function findAndAddTokens(sourceCode)
     // Go through the source code then try to match the source code with a regular expression token
     for (var i in sourceCode) {
         // Find the next token and then put the type and the regular expression in their variables
-        var found = findNextToken(sourceCode);
+        var found = lexFindNextToken(sourceCode);
         var type = found[0];
         var regex = found[1];
 
@@ -81,8 +84,13 @@ function findAndAddTokens(sourceCode)
             // If quotes are encountered, single or double, start or end the lexing of a string
             if (type === "T_QUOTES")
             {
+                if(lexingString)
+                    addToken("T_ENDQUOTES", stringInformation[0], currentLine);
+                else
+                    addToken(type, stringInformation[0], currentLine);
+
+
                 lexingString = !lexingString;
-                addToken(type, -1, currentLine);
 
                 verbosePutMessage("Token: " + type + " on line: " + currentLine);
             }
@@ -91,10 +99,10 @@ function findAndAddTokens(sourceCode)
             {
                 currentLine++;
             }
-            // Ignore spaces and tabs unless it is in a string then they are important
-            else if (type === "T_SPACE" || type === "T_TAB")
+            // Ignore spaces unless it is in a string then they are important
+            else if (type === "T_SPACE")
             {
-                if (lexingString && type === "T_SPACE")
+                if (lexingString)
                 {
                     addToken(type, stringInformation[0], currentLine);
                     verbosePutMessage("Token: " + type + " on line: " + currentLine);
@@ -103,10 +111,18 @@ function findAndAddTokens(sourceCode)
             // Return as soon as the end of file is read
             else if (type === "T_ENDOFFILE")
             {
+                addToken(type, stringInformation[0], currentLine);
+                verbosePutMessage("Token: " + type + " on line: " + currentLine + " with value: " + stringInformation[0]);
                 return;
             }
             // For anything not mentioned above it will add a token because they do not have special things and it makes
             // them sad
+            else if (!lexingString && type === "T_CHAR")
+            {
+                addToken("T_ID", stringInformation[0], currentLine);
+                verbosePutMessage("Token: T_ID on line: " + currentLine + " with value: " + stringInformation[0]);
+
+            }
             else
             {
                 addToken(type, stringInformation[0], currentLine);
