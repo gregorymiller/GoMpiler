@@ -97,6 +97,14 @@ function findAndAddTokens(sourceCode)
             // If new line is encountered increase the line count
             else if (type === "T_NEWLINE")
             {
+                // If you encounter a string value trying to span multiple lines return and log an error
+                if (lexingString)
+                {
+                    putMessage("Error: String value is trying to span multiple lines.") ;
+                    _ErrorCount++;
+                    return;
+                }
+
                 currentLine++;
             }
             // Ignore spaces unless it is in a string then they are important

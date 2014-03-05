@@ -32,6 +32,7 @@
 <script type="text/javascript" src="Scripts/TokenManager.js"></script>
 <script type="text/javascript" src="Scripts/Parse.js"></script>
 <script type="text/javascript" src="Scripts/SymbolTable.js"></script>
+<script type="text/javascript" src="Scripts/Tree.js"></script>
 <script type="text/javascript" src="Globals.js"></script>
 <script type="text/javascript">
 
@@ -44,18 +45,15 @@
         _TokenIndex = 0;
         _CurrentToken = ' ';
         _ErrorCount = 0;
+        _SymbolTable = new SymbolTable();
+        _CST = new Tree();
     }
 
     function btnCompile_click()
     {
-        // This is executed as a result of the usr pressing the 
-        // "compile" button between the two text areas, above.  
-        // Note the <input> element's event handler: onclick="btnCompile_click();
         init();
         putMessage("Compilation Started");
         lex();
-        // . . . and parse!
-
     }
 </script>
 </body>

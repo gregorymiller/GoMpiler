@@ -55,7 +55,7 @@ var Scope = function(parent) {
 
     // Check if a symbol exists if it does not add it and return that it was successful
     this.addSymbol = function(symbol) {
-        if (this.getSymbol(symbol.id) != false)
+        if (this.getSymbol(symbol.id) === false)
         {
             this.symbols.push(symbol);
             return true;
@@ -72,6 +72,18 @@ var Scope = function(parent) {
             if (key.id === this.symbols[i].id)
             {
                 return this.symbols[i];
+            }
+        }
+
+        return false;
+    };
+
+    this.setUsed = function(key) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if (key.id === this.symbols[i].id)
+            {
+                this.symbols[i].used = true;
+                return true;
             }
         }
 

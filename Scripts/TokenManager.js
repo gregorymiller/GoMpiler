@@ -85,7 +85,7 @@ function parseGetNextToken()
     {
         // If we're not at EOF, then return the next token in the stream and advance the index.
         thisToken = _Tokens[_TokenIndex];
-        verbosePutMessage("Parsing current token:" + thisToken.toString());
+        verbosePutMessage("Parsing current token: " + thisToken.toString());
         _TokenIndex++;
     }
     return thisToken;
