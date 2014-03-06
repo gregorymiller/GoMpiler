@@ -121,7 +121,7 @@ var Scope = function(parent) {
         for (var i = 0; i < this.symbols.length; i++) {
             if (key === this.symbols[i].id)
             {
-                return true;
+                return this.symbols[i];
             }
         }
 
@@ -169,5 +169,25 @@ var Scope = function(parent) {
             var trueFalse =this.parent.isUsed(key);
 
         return trueFalse;
+    };
+
+    this.addCopySymbolInCurrentScope = function(key) {
+        // Find its reference in the parent scope
+        var parentSymbol = this.getSymbol(key.value);
+
+        // If this scope is not the root of the symbol table then add it to the symbol table again
+        if (this.parent != _SymbolTable.root.parent)
+        {
+            // Create a temporary token to use to make the symbol
+            var tempToken = new Token();
+            tempToken.type = parentSymbol.id;
+            tempToken.value = parentSymbol.type;
+            tempToken.line = parentSymbol.line;
+
+            // Make the symbol and add it to the symbol table
+            var symbol = new Symbol(key, tempToken);
+            symbol.used = true;
+            this.symbols.push(symbol);
+        }
     };
 };

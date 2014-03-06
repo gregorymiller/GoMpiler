@@ -306,7 +306,7 @@ function parseAssignmentStatement() {
     // Get the next token
     _CurrentToken = parseGetNextToken();
 
-    // Add assignstatement and id as branches
+    // Add assignmentStatement and id as branches
     _CST.addNode("AssignmentStatement", "branch");
     _CST.addNode("Id", "branch");
 
@@ -320,6 +320,11 @@ function parseAssignmentStatement() {
         putMessage("Error: Id used is never declared.");
         _ErrorCount++;
         return false;
+    }
+    // If it is a symbol check to see if it needs to be added again if the current scope is not the root scope
+    else
+    {
+        _SymbolTable.currentScope.addCopySymbolInCurrentScope(_CurrentToken);
     }
 
     // If the next token is = parse expr otherwise throw an error
