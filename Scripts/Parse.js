@@ -8,16 +8,14 @@
 function parseProgram() {
     putMessage("Parsing has started.");
 
-    _CST.addNode("Program");
+    _CST.addNode("Program", "branch");
 
     // If parse block returns true try to parse the EOF otherwise stop parsing
     if (parseBlock())
     {
         _CST.atLeaf();
         // If the EOF is parsed correctly finish parsing
-        if (parseEndOfFile())
-            putMessage("Parsing complete.");
-        else
+        if (!parseEndOfFile())
             parseStop();
     }
     else
@@ -25,11 +23,11 @@ function parseProgram() {
 
     if (_ErrorCount < 1)
     {
-        putMessage(_CST.toString());
-    }
-    else
-    {
-        putMessage("Please address errors and recompile.");
+        putMessage("Parsing complete.");
+        verbosePutMessage("The concrete syntax tree is:");
+        verbosePutMessage(_CST.toString());
+        verbosePutMessage("The symbol table is:");
+        verbosePutMessage(_SymbolTable.toString());
     }
 }
 
@@ -38,31 +36,31 @@ function parseEndOfFile() {
     if (parseLookAheadOne().type === "T_ENDOFFILE")
     {
         _CurrentToken = parseGetNextToken();
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
         return true;
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type + " expecting $");
+        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type
+            + " on line: " + parseLookAheadOne().line + " expecting $");
         _ErrorCount++;
         return false;
     }
 }
 
 function parseBlock() {
-    _CST.addNode("Block");
+    _CST.addNode("Block", "branch");
     // Check for { else throw an error
     if (parseLookAheadOne().type === "T_LEFTBRACE")
     {
         _CurrentToken = parseGetNextToken();
         _SymbolTable.newScope();
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type + " expecting {");
+        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type
+            + " on line: " + parseLookAheadOne().line + " expecting {");
         _ErrorCount++;
         return false;
     }
@@ -76,13 +74,13 @@ function parseBlock() {
         {
             _CurrentToken = parseGetNextToken();
             _SymbolTable.endScope();
-            _CST.addNode(_CurrentToken.value);
-            _CST.atLeaf();
+            _CST.addNode(_CurrentToken.value, "leaf");
             return true;
         }
         else
         {
-            putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type + " expecting }");
+            putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type
+                + " on line: " + parseLookAheadOne().line + " expecting }");
             _ErrorCount++;
             return false;
         }
@@ -95,7 +93,7 @@ function parseBlock() {
 
 
 function parseStatementList() {
-    _CST.addNode("StatementList");
+    _CST.addNode("StatementList", "branch");
     // If you can look ahead and see } then return true because of the epsilon transition
     if (parseEmptyString().type === "T_RIGHTBRACE")
     {
@@ -105,6 +103,7 @@ function parseStatementList() {
     // Parse a statement then statementlist return true or false depending on if parse correctly
     if (parseStatement())
     {
+        _CST.atLeaf();
         if (parseStatementList())
         {
             _CST.atLeaf();
@@ -112,8 +111,6 @@ function parseStatementList() {
         }
         else
             return false;
-
-        _CST.atLeaf();
     }
     else
         return false;
@@ -125,7 +122,7 @@ function parseEmptyString() {
 }
 
 function parseStatement() {
-    _CST.addNode("Statement");
+    _CST.addNode("Statement", "branch");
     // Get the next token
     var tempToken = parseLookAheadOne().type;
 
@@ -189,8 +186,8 @@ function parseStatement() {
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + tempToken + " expecting print, id, type, while, " +
-            "if, or {.");
+        putMessage("Error: Unexpected token while parsing: " + tempToken
+            + " on line: " + parseLookAheadOne().line + " expecting print, id, type, while, if, or {.");
         _ErrorCount++;
         return false;
     }
@@ -198,16 +195,25 @@ function parseStatement() {
 
 function parsePrintStatement() {
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("PrintStatement");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
+    _CST.addNode("PrintStatement", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
 
     // If it is a print statement check for a ( then parse expr otherwise throw an error
     if (parseLookAheadOne().type === "T_LEFTPAREN")
     {
         _CurrentToken = parseGetNextToken();
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
+
+        if (parseLookAheadOne().type === "T_ID")
+        {
+            if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+            {
+                putMessage("Error: Id used is never declared.");
+                _ErrorCount++;
+                return false;
+            }
+        }
+
         if (!parseExpr())
             return false;
         else
@@ -217,7 +223,8 @@ function parsePrintStatement() {
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type + " expecting (.");
+        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type
+            + " on line: " + parseLookAheadOne().line + " expecting (.");
         _ErrorCount++;
         return false;
     }
@@ -226,13 +233,13 @@ function parsePrintStatement() {
     if (parseLookAheadOne().type === "T_RIGHTPAREN")
     {
         _CurrentToken = parseGetNextToken();
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
         return true;
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type + " expecting ).");
+        putMessage("Error: Unexpected token while parsing: " + parseLookAheadOne().type
+            + " on line: " + parseLookAheadOne().line + " expecting ).");
         _ErrorCount++;
         return false;
     }
@@ -240,27 +247,23 @@ function parsePrintStatement() {
 
 function parseAssignmentStatement() {
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("AssignmentStatement");
-    _CST.addNode(_CurrentToken.value);
+    _CST.addNode("AssignmentStatement", "branch");
+    _CST.addNode("Id", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
     _CST.atLeaf();
 
-    if (_SymbolTable.currentScope.getSymbol(_CurrentToken) != false)
+    if (_SymbolTable.currentScope.setUsed(_CurrentToken) === false)
     {
         putMessage("Error: Id used is never declared.");
         _ErrorCount++;
         return false;
-    }
-    else
-    {
-        _SymbolTable.currentScope.setUsed(_CurrentToken);
     }
 
     // If the next token is = parse expr otherwise throw an error
     if (parseLookAheadOne().type === "T_ASSIGNMENT")
     {
         _CurrentToken = parseGetNextToken();
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
         if (!parseExpr())
             return false;
         else
@@ -268,7 +271,8 @@ function parseAssignmentStatement() {
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting =.");
+        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+            + " on line: " + _CurrentToken.line + " expecting =.");
         _ErrorCount++;
         return false;
     }
@@ -278,23 +282,29 @@ function parseAssignmentStatement() {
 function parseVarDecl() {
     // Maybe do symbol table stuff here
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("VarDecl");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
+    _PreviousToken = _CurrentToken;
+    _CST.addNode("VarDecl", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
+
     // Parse id error handling will be handled in the called function
     if (!parseId())
         return false;
     else
     {
+        if (!_SymbolTable.newSymbol(_CurrentToken, _PreviousToken))
+        {
+            putMessage("Error: Identifier already in use.");
+            return false;
+        }
+
         _CST.atLeaf();
         return true;
     }
 }
 function parseWhileStatement() {
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("WhileStatement");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
+    _CST.addNode("WhileStatement", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
 
     // Parse a boolean expression then a block of the while
     // Error handling done in methods
@@ -314,9 +324,8 @@ function parseWhileStatement() {
 }
 function parseIfStatement() {
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("IfStatement");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
+    _CST.addNode("IfStatement", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
 
     // Parse a boolean expression then a block of the if
     // Error handling done in methods
@@ -336,7 +345,7 @@ function parseIfStatement() {
 }
 
 function parseExpr() {
-    _CST.addNode("Expr");
+    _CST.addNode("Expr", "branch");
     // Get the next token
     var tempToken = parseLookAheadOne().type;
 
@@ -359,7 +368,7 @@ function parseExpr() {
         else
         {
             _CST.atLeaf();
-            return true;
+           return true;
         }
     }
     else if (tempToken === "T_LEFTPAREN" || tempToken === "T_BOOLVAL")
@@ -384,7 +393,8 @@ function parseExpr() {
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + tempToken + " expecting digit, quotes, (, id.");
+        putMessage("Error: Unexpected token while parsing: " + tempToken + " on line: "
+            + parseLookAheadOne().line + " expecting digit, quotes, (, id, or boolval.");
         _ErrorCount++;
         return false;
     }
@@ -393,18 +403,28 @@ function parseExpr() {
 function parseIntExpr() {
     _CurrentToken = parseGetNextToken();
     var tempNextToken = parseLookAheadOne().type;
-    _CST.addNode("IntExpr");
+    _CST.addNode("IntExpr", "branch");
 
 
     // If the current token is a digit and it is followed by a plus parse expr
     // Throw an error if digit is not found
     if (_CurrentToken.type === "T_DIGIT" && tempNextToken === "T_INTOP")
     {
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
+
         _CurrentToken = parseGetNextToken();
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
+
+        if (parseLookAheadOne().type === "T_ID")
+        {
+            if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+            {
+                putMessage("Error: Id used is never declared.");
+                _ErrorCount++;
+                return false;
+            }
+        }
+
         if (!parseExpr())
             return false;
         else
@@ -415,12 +435,13 @@ function parseIntExpr() {
     // If it is just a digit return true
     else if (_CurrentToken.type === "T_DIGIT")
     {
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
+
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting digit or digit +.");
+        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+            + " on line: " + _CurrentToken.line + " expecting digit or digit +.");
         _ErrorCount++;
         return false;
     }
@@ -430,9 +451,9 @@ function parseIntExpr() {
 
 function parseStringExpr() {
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("StringExpr");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
+    _CST.addNode("StringExpr", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
+
     // Parse char list if there is a problem return false
     if (!parseCharList())
         return false;
@@ -446,13 +467,14 @@ function parseStringExpr() {
     // If the next token is not a end quote throw an error
     if (_CurrentToken.type === "T_ENDQUOTES")
     {
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
+
         return true;
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting end quote.");
+        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+            + " on line: " + _CurrentToken.line + " expecting end quote.");
         _ErrorCount++;
         return false;
     }
@@ -460,18 +482,19 @@ function parseStringExpr() {
 
 function parseCharList() {
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("CharList");
+    _CST.addNode("CharList", "branch");
 
     // See if the next token is the end quote for an epsilon transition
-    if (parseEmptyString().type === "T_ENDQUOTES")
+    if ((_CurrentToken.type === "T_CHAR" || _CurrentToken.type === "T_SPACE") && parseEmptyString().type === "T_ENDQUOTES")
     {
+        _CST.addNode(_CurrentToken.value, "leaf");
         return true;
     }
     // If it is a character or a a space continue to parse otherwise throw an error
     else if (_CurrentToken.type === "T_CHAR" || _CurrentToken.type === "T_SPACE")
     {
-        _CST.addNode(_CurrentToken.value);
-        _CST.atLeaf();
+        _CST.addNode(_CurrentToken.value, "leaf");
+
         if (!parseCharList())
             return false;
         else
@@ -481,7 +504,8 @@ function parseCharList() {
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting space or char.");
+        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+            + " on line: " + _CurrentToken.line + " expecting space or char.");
         _ErrorCount++;
         return false;
     }
@@ -492,19 +516,27 @@ function parseCharList() {
 function parseBooleanExpr() {
     // Either get the boolean value or (
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("BooleanExpr");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
+    _CST.addNode("BooleanExpr", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
 
     // If it is true or false return true
     if (_CurrentToken.type === "T_BOOLVAL")
     {
-        _CST.atLeaf();
         return true;
     }
     // If it is not a boolean value it is a whole expression
-    else
+    else if (_CurrentToken.type === "T_LEFTPAREN")
     {
+        if (parseLookAheadOne().type === "T_ID")
+        {
+            if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+            {
+                putMessage("Error: Id used is never declared.");
+                _ErrorCount++;
+                return false;
+            }
+        }
+
         // Then parse expr
         if (!parseExpr())
             return false;
@@ -518,8 +550,18 @@ function parseBooleanExpr() {
         // After parsing expr check for a boolean operation otherwise throw an error
         if (_CurrentToken.type === "T_BOOLOP")
         {
-            _CST.addNode(_CurrentToken.value);
-            _CST.atLeaf();
+            _CST.addNode(_CurrentToken.value, "leaf");
+
+            if (parseLookAheadOne().type === "T_ID")
+            {
+                if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+                {
+                    putMessage("Error: Id used is never declared.");
+                    _ErrorCount++;
+                    return false;
+                }
+            }
+
             // Then parse expr
             if (!parseExpr())
                 return false;
@@ -530,7 +572,8 @@ function parseBooleanExpr() {
         }
         else
         {
-            putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting == or !=.");
+            putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+                + " on line: " + _CurrentToken.line + " expecting == or !=.");
             _ErrorCount++;
             return false;
         }
@@ -540,41 +583,41 @@ function parseBooleanExpr() {
         // Check if the next token is the ) otherwise throw an error
         if (_CurrentToken.type === "T_RIGHTPAREN")
         {
-            _CST.addNode(_CurrentToken.value);
-            _CST.atLeaf();
+            _CST.addNode(_CurrentToken.value, "leaf");
+
             return true;
         }
         else
         {
-            putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting ).");
+            putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+                + " on line: " + _CurrentToken.line + " expecting ).");
             _ErrorCount++;
             return false;
         }
     }
+    else
+    {
+        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+            + " on line: " + _CurrentToken.line + " expecting (.");
+        _ErrorCount++;
+        return false;
+    }
 }
 
 function parseId() {
-    // To get the type for the symbol table
-    _PreviousToken = _CurrentToken;
     _CurrentToken = parseGetNextToken();
-    _CST.addNode("Id");
-    _CST.addNode(_CurrentToken.value);
-    _CST.atLeaf();
-    _CST.atLeaf();
+    _CST.addNode("Id", "branch");
+    _CST.addNode(_CurrentToken.value, "leaf");
 
     // If it is an id return true otherwise throw an error
     if (_CurrentToken.type === "T_ID")
     {
-        if (!_SymbolTable.newSymbol(_CurrentToken, _PreviousToken))
-        {
-            putMessage("Error: Identifier already in use.");
-            return false;
-        }
         return true;
     }
     else
     {
-        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType() + " expecting id.");
+        putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
+            + " on line: " + _CurrentToken.line + " expecting id.");
         _ErrorCount++;
         return false;
     }

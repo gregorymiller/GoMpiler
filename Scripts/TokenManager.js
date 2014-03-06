@@ -18,7 +18,7 @@ var string = /^string/;
 var boolean = /^boolean/;
 var leftParen = /^\(/;
 var rightParen = /^\)/;
-var quotes = /^("|')/;
+var quotes = /^"/;
 var ifValue = /^if/;
 var assignment = /^=/;
 var whileValue = /^while/;
@@ -96,7 +96,36 @@ function parseLookAheadOne() {
     return _Tokens[_TokenIndex];
 }
 
-function lexFindNextToken(sourceCode) {
+function lexFindNextToken(sourceCode, lexingString) {
+    // If lexing a string only look for certain things
+    // This is to prevent it from recognizing int as a type when it is a string
+    if (lexingString)
+    {
+        var charRegEx = regExTokens["Char"].regex;
+        var charType = regExTokens["Char"].type;
+        var spaceRegEx = regExTokens["Space"].regex;
+        var spaceType = regExTokens["Space"].type;
+        var quotesRegEx = regExTokens["Quotes"].regex;
+        var quotesType = regExTokens["Quotes"].type;
+
+        if (charRegEx.test(sourceCode))
+        {
+            return [charType, charRegEx];
+        }
+        else if (spaceRegEx.test(sourceCode))
+        {
+            return [spaceType, spaceRegEx];
+        }
+        else if (quotesRegEx.test(sourceCode))
+        {
+            return [quotesType, quotesRegEx];
+        }
+        else
+        {
+            return [null, null];
+        }
+    }
+
     // Go through all of the regular expressions and test them to find a match
     // If a match is found return the type and regex expression otherwise return null
     for (var key in regExTokens) {

@@ -24,8 +24,7 @@ function lex()
     // If there is no end of file add one and warn the user
     if(!endOfFileMarker)
     {
-        putMessage("Error: No end of file located.");
-        putMessage("Warning: End of file is being added to continue.");
+        putMessage("Warning: No end of file. End of file is being added to continue.");
         sourceCode += EOF;
     }
     // If an end of file located and there are things after show a warning
@@ -44,16 +43,10 @@ function lex()
 
     findAndAddTokens(sourceCode);
 
-
-    var tempListOfTokens = "";
-    for (var i in _Tokens) {
-        tempListOfTokens += _Tokens[i].toStringType() + ". ";
-    }
-    putMessage("Lex returned: " + tempListOfTokens);
-
     // If no errors exist than parse otherwise stop
     if (_ErrorCount < 1)
     {
+        putMessage("Lex complete.");
         parseProgram();
     }
     else
@@ -71,7 +64,7 @@ function findAndAddTokens(sourceCode)
     // Go through the source code then try to match the source code with a regular expression token
     for (var i in sourceCode) {
         // Find the next token and then put the type and the regular expression in their variables
-        var found = lexFindNextToken(sourceCode);
+        var found = lexFindNextToken(sourceCode, lexingString);
         var type = found[0];
         var regex = found[1];
 
