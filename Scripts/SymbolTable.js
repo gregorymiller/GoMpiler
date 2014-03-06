@@ -129,9 +129,7 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-        {
             var trueFalse = this.parent.getSymbol(key);
-        }
 
         return trueFalse;
     };
@@ -150,9 +148,7 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-        {
             var trueFalse =this.parent.setUsed(key);
-        }
 
         return trueFalse;
     };
@@ -170,9 +166,7 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-        {
             var trueFalse =this.parent.isUsed(key);
-        }
 
         return trueFalse;
     };

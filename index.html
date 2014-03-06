@@ -51,10 +51,12 @@
         // Set the initial values for our globals.
         _Tokens = [];
         _TokenIndex = 0;
-        _CurrentToken = ' ';
         _ErrorCount = 0;
         _SymbolTable = new SymbolTable();
         _CST = new Tree();
+        _CurrentToken = null;
+        _PreviousToken = null;
+
     }
 
     function btnCompile_click()

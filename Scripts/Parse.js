@@ -19,13 +19,18 @@ function parseProgram() {
             parseStop();
     }
     else
+    {
         parseStop();
+    }
 
+    // If parsing returned no errors output complete and if verbose out put the cst and symbol table
     if (_ErrorCount < 1)
     {
         putMessage("Parsing complete.");
+
         verbosePutMessage("The concrete syntax tree is:");
         verbosePutMessage(_CST.toString());
+
         verbosePutMessage("The symbol table is:");
         verbosePutMessage(_SymbolTable.toString());
     }
@@ -36,6 +41,8 @@ function parseEndOfFile() {
     if (parseLookAheadOne().type === "T_ENDOFFILE")
     {
         _CurrentToken = parseGetNextToken();
+
+        // Add as a leaf to the cst
         _CST.addNode(_CurrentToken.value, "leaf");
         return true;
     }
@@ -49,11 +56,15 @@ function parseEndOfFile() {
 }
 
 function parseBlock() {
+    // Add the block branch to the cst
     _CST.addNode("Block", "branch");
+
     // Check for { else throw an error
     if (parseLookAheadOne().type === "T_LEFTBRACE")
     {
         _CurrentToken = parseGetNextToken();
+
+        // Start a new scope because it is new curly brace and add a leaf node to the cst
         _SymbolTable.newScope();
         _CST.addNode(_CurrentToken.value, "leaf");
     }
@@ -68,11 +79,16 @@ function parseBlock() {
     // Parse statementlist if there are problems return false
     if (parseStatementList())
     {
+        // If parseStatementList returned with no errors the cst is then at a leaf since
+        // there is nothing left to parse it must go back to block
         _CST.atLeaf();
+
         // If all statements are parsed try to parse } else throw an error
         if (parseLookAheadOne().type === "T_RIGHTBRACE")
         {
             _CurrentToken = parseGetNextToken();
+
+            // End the current scope at the right curly brace and add a leaf node to the cst
             _SymbolTable.endScope();
             _CST.addNode(_CurrentToken.value, "leaf");
             return true;
@@ -93,7 +109,9 @@ function parseBlock() {
 
 
 function parseStatementList() {
+    // Add parseStatementList as a branch to the cst
     _CST.addNode("StatementList", "branch");
+
     // If you can look ahead and see } then return true because of the epsilon transition
     if (parseEmptyString().type === "T_RIGHTBRACE")
     {
@@ -103,17 +121,27 @@ function parseStatementList() {
     // Parse a statement then statementlist return true or false depending on if parse correctly
     if (parseStatement())
     {
+        // If parseStatement executed correctly it means we are done parsing it so we are now at a leaf node
+        // and must return
         _CST.atLeaf();
+
+        // Then parseStatementList because there is more to be parsed
         if (parseStatementList())
         {
+            // If parseStatementList executed correctly it means we are done parsing it so we are now at a leaf node
+            // and must return
             _CST.atLeaf();
             return true;
         }
         else
+        {
             return false;
+        }
     }
     else
+    {
         return false;
+    }
 }
 
 // Look ahead one to represent an epsilon transition
@@ -122,7 +150,9 @@ function parseEmptyString() {
 }
 
 function parseStatement() {
+    // Add the statement branch to the cst
     _CST.addNode("Statement", "branch");
+
     // Get the next token
     var tempToken = parseLookAheadOne().type;
 
@@ -131,45 +161,65 @@ function parseStatement() {
     // throw an error
     if (tempToken === "T_PRINT") {
         if (!parsePrintStatement())
+        {
             return false;
+        }
         else
         {
+            // If it was parsed correctly we know that we are done parsing that statement or block
+            // and we are at a leaf node then
             _CST.atLeaf();
             return true;
         }
     }
     else if (tempToken === "T_ID") {
         if (!parseAssignmentStatement())
+        {
             return false;
+        }
         else
         {
+            // If it was parsed correctly we know that we are done parsing that statement or block
+            // and we are at a leaf node then
             _CST.atLeaf();
             return true;
         }
     }
     else if (tempToken === "T_TYPE") {
         if (!parseVarDecl())
+        {
             return false;
+        }
         else
         {
+            // If it was parsed correctly we know that we are done parsing that statement or block
+            // and we are at a leaf node then
             _CST.atLeaf();
             return true;
         }
     }
     else if (tempToken === "T_WHILE") {
         if (!parseWhileStatement())
+        {
             return false;
+        }
         else
         {
+            // If it was parsed correctly we know that we are done parsing that statement or block
+            // and we are at a leaf node then
             _CST.atLeaf();
             return true;
         }
     }
     else if (tempToken === "T_IF") {
         if (!parseIfStatement())
+        {
             return false;
+        }
         else
         {
+            // If it was parsed correctly we know that we are done parsing that statement or block
+            // and we are at a leaf node then
             _CST.atLeaf();
             return true;
         }
@@ -177,9 +227,13 @@ function parseStatement() {
     else if (tempToken === "T_LEFTBRACE")
     {
         if (!parseBlock())
+        {
             return false;
+        }
         else
         {
+            // If it was parsed correctly we know that we are done parsing that statement or block
+            // and we are at a leaf node then
             _CST.atLeaf();
             return true;
         }
@@ -194,32 +248,34 @@ function parseStatement() {
 }
 
 function parsePrintStatement() {
+    // Get the current token
     _CurrentToken = parseGetNextToken();
+
+    // Add printStatement as a brach and print as a leaf
     _CST.addNode("PrintStatement", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
     // If it is a print statement check for a ( then parse expr otherwise throw an error
     if (parseLookAheadOne().type === "T_LEFTPAREN")
     {
+        // Set ( as the current token then add it as a leaf to the cst
         _CurrentToken = parseGetNextToken();
         _CST.addNode(_CurrentToken.value, "leaf");
 
-        if (parseLookAheadOne().type === "T_ID")
+        // If the expr is an id check if it has been used and if not throw an error
+        if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
         {
-            if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-            {
-                putMessage("Error: Id used is never declared.");
-                _ErrorCount++;
-                return false;
-            }
+            putMessage("Error: Id used is never declared.");
+            _ErrorCount++;
+            return false;
         }
 
+        // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
+        // been an error so continue to return false
         if (!parseExpr())
             return false;
         else
-        {
             _CST.atLeaf();
-        }
     }
     else
     {
@@ -232,6 +288,7 @@ function parsePrintStatement() {
     // If expr was parsed correctly look for a ) otherwise throw an error
     if (parseLookAheadOne().type === "T_RIGHTPAREN")
     {
+        // Set ) as the current token then add it as a leaf to the cst
         _CurrentToken = parseGetNextToken();
         _CST.addNode(_CurrentToken.value, "leaf");
         return true;
@@ -246,12 +303,18 @@ function parsePrintStatement() {
 }
 
 function parseAssignmentStatement() {
+    // Get the next token
     _CurrentToken = parseGetNextToken();
+
+    // Add assignstatement and id as branches
     _CST.addNode("AssignmentStatement", "branch");
     _CST.addNode("Id", "branch");
+
+    // Then add the current id as a leaf then you are at a leaf because of the id branch
     _CST.addNode(_CurrentToken.value, "leaf");
     _CST.atLeaf();
 
+    // If the id is never declared throw an error
     if (_SymbolTable.currentScope.setUsed(_CurrentToken) === false)
     {
         putMessage("Error: Id used is never declared.");
@@ -262,8 +325,12 @@ function parseAssignmentStatement() {
     // If the next token is = parse expr otherwise throw an error
     if (parseLookAheadOne().type === "T_ASSIGNMENT")
     {
+        // Add = as a leaf to the cst
         _CurrentToken = parseGetNextToken();
         _CST.addNode(_CurrentToken.value, "leaf");
+
+        // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
+        // been an error so continue to return false
         if (!parseExpr())
             return false;
         else
@@ -280,29 +347,39 @@ function parseAssignmentStatement() {
     return true;
 }
 function parseVarDecl() {
-    // Maybe do symbol table stuff here
+    // Get the current token and set the previous token as the current one so when parseId returns
+    // The symbol table can be sent the type and id name
     _CurrentToken = parseGetNextToken();
     _PreviousToken = _CurrentToken;
+
+    // Add varDecl as a branch and the the id as a leaf
     _CST.addNode("VarDecl", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
     // Parse id error handling will be handled in the called function
     if (!parseId())
+    {
         return false;
+    }
     else
     {
+        // Add it to the symbol table if there is an error in adding it return false
         if (!_SymbolTable.newSymbol(_CurrentToken, _PreviousToken))
         {
             putMessage("Error: Identifier already in use.");
             return false;
         }
 
+        // If parseId executed correctly you are then at a leaf node and must return
         _CST.atLeaf();
         return true;
     }
 }
 function parseWhileStatement() {
+    // Get the next token
     _CurrentToken = parseGetNextToken();
+
+    // Add whileStatement as a branch and while as a leaf to the cst
     _CST.addNode("WhileStatement", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
@@ -311,19 +388,20 @@ function parseWhileStatement() {
     if (!parseBooleanExpr())
         return false;
     else
-    {
         _CST.atLeaf();
-    }
+
     if (!parseBlock())
         return false;
     else
-    {
         _CST.atLeaf();
-    }
+
     return true;
 }
 function parseIfStatement() {
+    // Get next token
     _CurrentToken = parseGetNextToken();
+
+    // Add ifStatement to the cst and if as a leaf
     _CST.addNode("IfStatement", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
@@ -332,20 +410,20 @@ function parseIfStatement() {
     if (!parseBooleanExpr())
         return false;
     else
-    {
         _CST.atLeaf();
-    }
+
     if (!parseBlock())
         return false;
     else
-    {
         _CST.atLeaf();
-    }
+
     return true;
 }
 
 function parseExpr() {
+    // Add expr as a branch
     _CST.addNode("Expr", "branch");
+
     // Get the next token
     var tempToken = parseLookAheadOne().type;
 
@@ -354,9 +432,12 @@ function parseExpr() {
     if (tempToken === "T_DIGIT")
     {
         if (!parseIntExpr())
+        {
             return false;
+        }
         else
         {
+            // If the expr or id was parsed correctly then you are now at a leaf node and must return
             _CST.atLeaf();
             return true;
         }
@@ -364,9 +445,12 @@ function parseExpr() {
     else if (tempToken === "T_QUOTES")
     {
         if (!parseStringExpr())
+        {
             return false;
+        }
         else
         {
+            // If the expr or id was parsed correctly then you are now at a leaf node and must return
             _CST.atLeaf();
            return true;
         }
@@ -374,9 +458,12 @@ function parseExpr() {
     else if (tempToken === "T_LEFTPAREN" || tempToken === "T_BOOLVAL")
     {
         if (!parseBooleanExpr())
+        {
             return false;
+        }
         else
         {
+            // If the expr or id was parsed correctly then you are now at a leaf node and must return
             _CST.atLeaf();
             return true;
         }
@@ -384,9 +471,12 @@ function parseExpr() {
     else if (tempToken === "T_ID")
     {
         if (!parseId())
+        {
             return false;
+        }
         else
         {
+            // If the expr or id was parsed correctly then you are now at a leaf node and must return
             _CST.atLeaf();
             return true;
         }
@@ -401,8 +491,13 @@ function parseExpr() {
 }
 
 function parseIntExpr() {
+    // Get the current token
     _CurrentToken = parseGetNextToken();
+
+    // Look at the next token to see if it +
     var tempNextToken = parseLookAheadOne().type;
+
+    // Add intExpr as a branch to the cst
     _CST.addNode("IntExpr", "branch");
 
 
@@ -410,33 +505,32 @@ function parseIntExpr() {
     // Throw an error if digit is not found
     if (_CurrentToken.type === "T_DIGIT" && tempNextToken === "T_INTOP")
     {
+        // Add the digit as a leaf
         _CST.addNode(_CurrentToken.value, "leaf");
 
+        // Get the + then add it as a leaf to the cst
         _CurrentToken = parseGetNextToken();
         _CST.addNode(_CurrentToken.value, "leaf");
 
-        if (parseLookAheadOne().type === "T_ID")
+        // If the next expr is an id check to make sure it exists before adding it
+        if (parseLookAheadOne().type === "T_ID"  && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
         {
-            if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-            {
-                putMessage("Error: Id used is never declared.");
-                _ErrorCount++;
-                return false;
-            }
+            putMessage("Error: Id used is never declared.");
+            _ErrorCount++;
+            return false;
         }
 
+        // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
+        // been an error so continue to return false
         if (!parseExpr())
             return false;
         else
-        {
             _CST.atLeaf();
-        }
     }
-    // If it is just a digit return true
+    // If it is just a digit add it to the cst return true
     else if (_CurrentToken.type === "T_DIGIT")
     {
         _CST.addNode(_CurrentToken.value, "leaf");
-
     }
     else
     {
@@ -450,7 +544,10 @@ function parseIntExpr() {
 }
 
 function parseStringExpr() {
+    // Get next token
     _CurrentToken = parseGetNextToken();
+
+    // Add stringExpr as a branch and " as a leaf
     _CST.addNode("StringExpr", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
@@ -458,17 +555,15 @@ function parseStringExpr() {
     if (!parseCharList())
         return false;
     else
-    {
         _CST.atLeaf();
-    }
 
     _CurrentToken = parseGetNextToken();
 
+    // If the next token is the end quote add it as a leaf
     // If the next token is not a end quote throw an error
     if (_CurrentToken.type === "T_ENDQUOTES")
     {
         _CST.addNode(_CurrentToken.value, "leaf");
-
         return true;
     }
     else
@@ -481,26 +576,30 @@ function parseStringExpr() {
 }
 
 function parseCharList() {
+    // Get next token
     _CurrentToken = parseGetNextToken();
+
+    // Add charList as a branch to the cst
     _CST.addNode("CharList", "branch");
 
-    // See if the next token is the end quote for an epsilon transition
+    // See if the next token is the end quote for an epsilon transition, but still check the current token
     if ((_CurrentToken.type === "T_CHAR" || _CurrentToken.type === "T_SPACE") && parseEmptyString().type === "T_ENDQUOTES")
     {
+        // Add the current token as a leaf
         _CST.addNode(_CurrentToken.value, "leaf");
         return true;
     }
     // If it is a character or a a space continue to parse otherwise throw an error
     else if (_CurrentToken.type === "T_CHAR" || _CurrentToken.type === "T_SPACE")
     {
+        // Add it as a leaf to the cst
         _CST.addNode(_CurrentToken.value, "leaf");
 
+        // Continue to parse charList until end quote or error
         if (!parseCharList())
             return false;
         else
-        {
             _CST.atLeaf();
-        }
     }
     else
     {
@@ -516,6 +615,8 @@ function parseCharList() {
 function parseBooleanExpr() {
     // Either get the boolean value or (
     _CurrentToken = parseGetNextToken();
+
+    // Add booleanExpr as a branch then a boolean value or ( as a leaf
     _CST.addNode("BooleanExpr", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
@@ -527,48 +628,43 @@ function parseBooleanExpr() {
     // If it is not a boolean value it is a whole expression
     else if (_CurrentToken.type === "T_LEFTPAREN")
     {
-        if (parseLookAheadOne().type === "T_ID")
+        // If it is using an id check that it exists
+        if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
         {
-            if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-            {
-                putMessage("Error: Id used is never declared.");
-                _ErrorCount++;
-                return false;
-            }
+            putMessage("Error: Id used is never declared.");
+            _ErrorCount++;
+            return false;
         }
 
-        // Then parse expr
+        // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
+        // been an error so continue to return false
         if (!parseExpr())
             return false;
         else
-        {
             _CST.atLeaf();
-        }
 
         _CurrentToken = parseGetNextToken();
 
         // After parsing expr check for a boolean operation otherwise throw an error
         if (_CurrentToken.type === "T_BOOLOP")
         {
+            // Add the boolop as a leaf
             _CST.addNode(_CurrentToken.value, "leaf");
 
-            if (parseLookAheadOne().type === "T_ID")
+            // If it is using an id check that it exists
+            if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
             {
-                if (_SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-                {
-                    putMessage("Error: Id used is never declared.");
-                    _ErrorCount++;
-                    return false;
-                }
+                putMessage("Error: Id used is never declared.");
+                _ErrorCount++;
+                return false;
             }
 
-            // Then parse expr
+            // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
+            // been an error so continue to return false
             if (!parseExpr())
                 return false;
             else
-            {
                 _CST.atLeaf();
-            }
         }
         else
         {
@@ -583,8 +679,8 @@ function parseBooleanExpr() {
         // Check if the next token is the ) otherwise throw an error
         if (_CurrentToken.type === "T_RIGHTPAREN")
         {
+            // Add ) as a leaf to the cst
             _CST.addNode(_CurrentToken.value, "leaf");
-
             return true;
         }
         else
@@ -605,7 +701,10 @@ function parseBooleanExpr() {
 }
 
 function parseId() {
+    // Get the next token
     _CurrentToken = parseGetNextToken();
+
+    // Add the id branch and the current token's value as a leaf
     _CST.addNode("Id", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
