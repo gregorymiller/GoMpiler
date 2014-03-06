@@ -61,3 +61,37 @@ function test6() {
     output.value += "    )\n}$";
 }
 
+function test7() {
+    var output = document.getElementById("taSourceCode");
+    output.value = "";
+
+    output.value += "{\n";
+    output.value += "    if ((5 !=6) == true)\n";
+    output.value += "    {\n";
+    output.value += "    }\n}$";
+}
+
+function test8() {
+    var output = document.getElementById("taSourceCode");
+    output.value = "";
+
+    output.value += "{\nstring nn\nnn = \"test\"\n}$";
+}
+
+function test9 () {
+    var output = document.getElementById("taSourceCode");
+    output.value = "";
+
+    output.value += "{\n5 + 6\n}$";
+}
+
+function test10() {
+    var output = document.getElementById("taSourceCode");
+    output.value = "";
+
+    output.value += "{\nint a\na = 0\n";
+    output.value += "while (a = 9)\n";
+    output.value += "{\n";
+    output.value += "}\n}$";
+}
+
