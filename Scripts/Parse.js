@@ -263,12 +263,12 @@ function parsePrintStatement() {
         _CST.addNode(_CurrentToken.value, "leaf");
 
         // If the expr is an id check if it has been used and if not throw an error
-        if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+        /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
         {
             putMessage("Error: Id used is never declared.");
             _ErrorCount++;
             return false;
-        }
+        }*/
 
         // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
         // been an error so continue to return false
@@ -315,7 +315,7 @@ function parseAssignmentStatement() {
     _CST.atLeaf();
 
     // If the id is never declared throw an error
-    if (_SymbolTable.currentScope.setUsed(_CurrentToken) === false)
+    /*if (_SymbolTable.currentScope.setUsed(_CurrentToken) === false)
     {
         putMessage("Error: Id used is never declared.");
         _ErrorCount++;
@@ -325,7 +325,9 @@ function parseAssignmentStatement() {
     else
     {
         _SymbolTable.currentScope.addCopySymbolInCurrentScope(_CurrentToken);
-    }
+    }*/
+
+    _SymbolTable.currentScope.addCopySymbolInCurrentScope(_CurrentToken);
 
     // If the next token is = parse expr otherwise throw an error
     if (parseLookAheadOne().type === "T_ASSIGNMENT")
@@ -518,12 +520,12 @@ function parseIntExpr() {
         _CST.addNode(_CurrentToken.value, "leaf");
 
         // If the next expr is an id check to make sure it exists before adding it
-        if (parseLookAheadOne().type === "T_ID"  && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-        {
-            putMessage("Error: Id used is never declared.");
-            _ErrorCount++;
-            return false;
-        }
+        /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+         {
+         putMessage("Error: Id used is never declared.");
+         _ErrorCount++;
+         return false;
+         }*/
 
         // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
         // been an error so continue to return false
@@ -634,12 +636,12 @@ function parseBooleanExpr() {
     else if (_CurrentToken.type === "T_LEFTPAREN")
     {
         // If it is using an id check that it exists
-        if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-        {
-            putMessage("Error: Id used is never declared.");
-            _ErrorCount++;
-            return false;
-        }
+        /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+         {
+         putMessage("Error: Id used is never declared.");
+         _ErrorCount++;
+         return false;
+         }*/
 
         // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
         // been an error so continue to return false
@@ -657,12 +659,12 @@ function parseBooleanExpr() {
             _CST.addNode(_CurrentToken.value, "leaf");
 
             // If it is using an id check that it exists
-            if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-            {
-                putMessage("Error: Id used is never declared.");
-                _ErrorCount++;
-                return false;
-            }
+            /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
+             {
+             putMessage("Error: Id used is never declared.");
+             _ErrorCount++;
+             return false;
+             }*/
 
             // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
             // been an error so continue to return false

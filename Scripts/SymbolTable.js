@@ -189,5 +189,9 @@ var Scope = function(parent) {
             symbol.used = true;
             this.symbols.push(symbol);
         }
+        else
+        {
+            parentSymbol.used = true;
+        }
     };
 };
