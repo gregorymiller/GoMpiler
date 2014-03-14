@@ -558,11 +558,15 @@ function parseStringExpr() {
     _CST.addNode("StringExpr", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
-    // Parse char list if there is a problem return false
-    if (!parseCharList())
-        return false;
-    else
-        _CST.atLeaf();
+    // If the next token is not an end quote then parseCharList
+    if (parseEmptyString().type != "T_ENDQUOTES")
+    {
+        // Parse char list if there is a problem return false
+        if (!parseCharList())
+            return false;
+        else
+            _CST.atLeaf();
+    }
 
     _CurrentToken = parseGetNextToken();
 

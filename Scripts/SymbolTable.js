@@ -105,7 +105,7 @@ var Scope = function(parent) {
 
     // Check if a symbol exists if it does not add it and return that it was successful
     this.addSymbol = function(symbol) {
-        if (this.getSymbol(symbol.id) === false)
+        /*if (this.getSymbol(symbol.id) === false)
         {
             this.symbols.push(symbol);
             return true;
@@ -113,7 +113,9 @@ var Scope = function(parent) {
         else
         {
             return false;
-        }
+        }*/
+        this.symbols.push(symbol);
+        return true;
     };
 
     // Check each variable in the current scope to see if it already exists
