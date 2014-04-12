@@ -46,6 +46,7 @@
 <script type="text/javascript" src="Scripts/Tree.js"></script>
 <script type="text/javascript" src="Scripts/Test.js"></script>
 <script type="text/javascript" src="Scripts/globals.js"></script>
+<script type="text/javascript" src="Scripts/SemanticAnalysis.js"></script>
 <script type="text/javascript">
 
     function init()
@@ -58,6 +59,7 @@
         _ErrorCount = 0;
         _SymbolTable = new SymbolTable();
         _CST = new Tree();
+        _AST = new Tree();
         _CurrentToken = null;
         _PreviousToken = null;
 

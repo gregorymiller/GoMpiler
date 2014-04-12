@@ -54,9 +54,9 @@ var Tree = function() {
             }
 
             // If it is a leaf print out the value and the depth
-            if (node.children === null)
+            if (node.children.length < 1 && node.value != "StatementList")
             {
-                treeString += "<" + node.value + "> depth: " + depth + "\n";
+                treeString += "[" + node.value + "] depth: " + depth + "\n";
             }
             // If it is not a leaf print out the value the continue to each of its children
             else

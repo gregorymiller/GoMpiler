@@ -23,7 +23,7 @@ function parseProgram() {
         parseStop();
     }
 
-    // If parsing returned no errors output complete and if verbose out put the cst and symbol table
+    // If parsing returned no errors output complete and if verbose out put the cst
     if (_ErrorCount < 1)
     {
         putMessage("Parsing complete.");
@@ -31,8 +31,7 @@ function parseProgram() {
         verbosePutMessage("The concrete syntax tree is:");
         verbosePutMessage(_CST.toString());
 
-        verbosePutMessage("The symbol table is:");
-        verbosePutMessage(_SymbolTable.toString());
+        SemanticAnalysis();
     }
 }
 
@@ -64,8 +63,7 @@ function parseBlock() {
     {
         _CurrentToken = parseGetNextToken();
 
-        // Start a new scope because it is new curly brace and add a leaf node to the cst
-        _SymbolTable.newScope();
+        // Add a leaf node to the cst
         _CST.addNode(_CurrentToken.value, "leaf");
     }
     else
@@ -88,8 +86,7 @@ function parseBlock() {
         {
             _CurrentToken = parseGetNextToken();
 
-            // End the current scope at the right curly brace and add a leaf node to the cst
-            _SymbolTable.endScope();
+            // Add a leaf node to the cst
             _CST.addNode(_CurrentToken.value, "leaf");
             return true;
         }
@@ -251,7 +248,7 @@ function parsePrintStatement() {
     // Get the current token
     _CurrentToken = parseGetNextToken();
 
-    // Add printStatement as a brach and print as a leaf
+    // Add printStatement as a branch and print as a leaf
     _CST.addNode("PrintStatement", "branch");
     _CST.addNode(_CurrentToken.value, "leaf");
 
@@ -261,14 +258,6 @@ function parsePrintStatement() {
         // Set ( as the current token then add it as a leaf to the cst
         _CurrentToken = parseGetNextToken();
         _CST.addNode(_CurrentToken.value, "leaf");
-
-        // If the expr is an id check if it has been used and if not throw an error
-        /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-        {
-            putMessage("Error: Id used is never declared.");
-            _ErrorCount++;
-            return false;
-        }*/
 
         // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
         // been an error so continue to return false
@@ -314,21 +303,6 @@ function parseAssignmentStatement() {
     _CST.addNode(_CurrentToken.value, "leaf");
     _CST.atLeaf();
 
-    // If the id is never declared throw an error
-    /*if (_SymbolTable.currentScope.setUsed(_CurrentToken) === false)
-    {
-        putMessage("Error: Id used is never declared.");
-        _ErrorCount++;
-        return false;
-    }
-    // If it is a symbol check to see if it needs to be added again if the current scope is not the root scope
-    else
-    {
-        _SymbolTable.currentScope.addCopySymbolInCurrentScope(_CurrentToken);
-    }*/
-
-    _SymbolTable.currentScope.addCopySymbolInCurrentScope(_CurrentToken);
-
     // If the next token is = parse expr otherwise throw an error
     if (parseLookAheadOne().type === "T_ASSIGNMENT")
     {
@@ -354,10 +328,8 @@ function parseAssignmentStatement() {
     return true;
 }
 function parseVarDecl() {
-    // Get the current token and set the previous token as the current one so when parseId returns
-    // The symbol table can be sent the type and id name
+    // Get the current token
     _CurrentToken = parseGetNextToken();
-    _PreviousToken = _CurrentToken;
 
     // Add varDecl as a branch and the the id as a leaf
     _CST.addNode("VarDecl", "branch");
@@ -370,13 +342,6 @@ function parseVarDecl() {
     }
     else
     {
-        // Add it to the symbol table if there is an error in adding it return false
-        if (!_SymbolTable.newSymbol(_CurrentToken, _PreviousToken))
-        {
-            putMessage("Error: Identifier already in use.");
-            return false;
-        }
-
         // If parseId executed correctly you are then at a leaf node and must return
         _CST.atLeaf();
         return true;
@@ -519,14 +484,6 @@ function parseIntExpr() {
         _CurrentToken = parseGetNextToken();
         _CST.addNode(_CurrentToken.value, "leaf");
 
-        // If the next expr is an id check to make sure it exists before adding it
-        /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-         {
-         putMessage("Error: Id used is never declared.");
-         _ErrorCount++;
-         return false;
-         }*/
-
         // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
         // been an error so continue to return false
         if (!parseExpr())
@@ -639,14 +596,6 @@ function parseBooleanExpr() {
     // If it is not a boolean value it is a whole expression
     else if (_CurrentToken.type === "T_LEFTPAREN")
     {
-        // If it is using an id check that it exists
-        /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-         {
-         putMessage("Error: Id used is never declared.");
-         _ErrorCount++;
-         return false;
-         }*/
-
         // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
         // been an error so continue to return false
         if (!parseExpr())
@@ -661,14 +610,6 @@ function parseBooleanExpr() {
         {
             // Add the boolop as a leaf
             _CST.addNode(_CurrentToken.value, "leaf");
-
-            // If it is using an id check that it exists
-            /*if (parseLookAheadOne().type === "T_ID" && _SymbolTable.currentScope.isUsed(parseLookAheadOne()) === false)
-             {
-             putMessage("Error: Id used is never declared.");
-             _ErrorCount++;
-             return false;
-             }*/
 
             // Parse expr if there are no problems it is done parsing expr and is then at a leaf otherwise there has
             // been an error so continue to return false

@@ -90,6 +90,7 @@ var Symbol = function(id, type) {
     this.line = id.line;
     this.value = null;
     this.used = false;
+    this.declared = false;
 
     this.toString = function() {
         return "Id: " + this.id + ", Type: " + this.type + ", Line: "
@@ -105,15 +106,6 @@ var Scope = function(parent) {
 
     // Check if a symbol exists if it does not add it and return that it was successful
     this.addSymbol = function(symbol) {
-        /*if (this.getSymbol(symbol.id) === false)
-        {
-            this.symbols.push(symbol);
-            return true;
-        }
-        else
-        {
-            return false;
-        }*/
         this.symbols.push(symbol);
         return true;
     };
@@ -150,7 +142,7 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-            var trueFalse =this.parent.setUsed(key);
+            var trueFalse = this.parent.setUsed(key);
 
         return trueFalse;
     };
@@ -168,32 +160,61 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-            var trueFalse =this.parent.isUsed(key);
+            var trueFalse = this.parent.isUsed(key);
 
         return trueFalse;
     };
 
-    this.addCopySymbolInCurrentScope = function(key) {
-        // Find its reference in the parent scope
-        var parentSymbol = this.getSymbol(key.value);
-
-        // If this scope is not the root of the symbol table then add it to the symbol table again
-        if (this.parent != _SymbolTable.root.parent)
-        {
-            // Create a temporary token to use to make the symbol
-            var tempToken = new Token();
-            tempToken.type = parentSymbol.id;
-            tempToken.value = parentSymbol.type;
-            tempToken.line = parentSymbol.line;
-
-            // Make the symbol and add it to the symbol table
-            var symbol = new Symbol(key, tempToken);
-            symbol.used = true;
-            this.symbols.push(symbol);
+    // Sets the variable to declared if it exists
+    this.setDeclared = function(key) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if (key.value === this.symbols[i].id)
+            {
+                this.symbols[i].declared = true;
+                return true;
+            }
         }
+
+        return false;
+    };
+
+    // Checks if the variable is declared
+    this.isDeclared = function(key) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if ((key.value === this.symbols[i].id) && this.symbols[i].declared === true)
+            {
+                return true;
+            }
+        }
+
+        // If we are at the root and it has not been found return false otherwise continue to parents
+        if (this.parent === null)
+            return false;
         else
-        {
-            parentSymbol.used = true;
+            var trueFalse = this.parent.isUsed(key);
+
+        return trueFalse;
+    };
+
+    this.setSymbolValue = function(key, value) {
+
+    };
+
+    // Find the symbol's type else return null
+    this.getSymbolType = function(key) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if ((key.value === this.symbols[i].id))
+            {
+                return this.symbols[i].type;
+            }
         }
+
+        // If we are at the root and it has not been found return false otherwise continue to parents
+        if (this.parent === null)
+            return null;
+        else
+            var type = this.parent.getSymbolType(key);
+
+        return type;
     };
 };
