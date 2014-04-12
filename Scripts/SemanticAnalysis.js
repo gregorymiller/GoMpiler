@@ -46,12 +46,14 @@ function buildSymbolTableAndAST() {
         {
             _AST.addNode("Statement Block", "branch");
             _SymbolTable.newScope();
+            _TokenIndex++;
         }
         // If we encounter a right brace the ast is now at a leaf and end the scope
         else if (token.type === "T_RIGHTBRACE")
         {
             _AST.atLeaf();
             _SymbolTable.endScope();
+            _TokenIndex++;
         }
 
         // Get the next token
@@ -60,6 +62,48 @@ function buildSymbolTableAndAST() {
 }
 
 function addPrintAST(token) {
+    _AST.addNode("Print", "branch");
+
+    _TokenIndex += 2;
+    token = _Tokens[_TokenIndex];
+
+    if (_Tokens[_TokenIndex + 1].type === "T_INTOP")
+    {
+        token = _Tokens[++_TokenIndex];
+        addIntExprAST(token);
+    }
+    else if (token.type === "T_ID" && _SymbolTable.currentScope.isDeclared(token))
+    {
+        _AST.addNode(token.value, "leaf");
+    }
+    else if (token.type === "T_QUOTES")
+    {
+        var stringExpr = "";
+
+        // Get all the characters in the string
+        while (token.type != "T_QUOTES") {
+            stringExpr += token.value;
+            token = _Tokens[++_TokenIndex];
+        }
+
+        _AST.addNode(stringExpr, "leaf");
+    }
+    else if (token.type === "T_BOOLVAL")
+    {
+        _AST.addNode(token.value, "leaf");
+    }
+    else if (token.type === "T_LEFTPAREN")
+    {
+        token = _Tokens[++_TokenIndex];
+        addBooleanExprAST(token);
+    }
+    else
+    {
+        putMessage("Something happened that shouldn't happen.");
+    }
+
+    _AST.atLeaf();
+    _TokenIndex++;
 
 }
 
@@ -145,7 +189,8 @@ function addAssignmentAST(token) {
     // If it is a boolean and a boolexpr is coming add it to the ast
     else if (type === "boolean" && token.type === "T_LEFTPAREN")
     {
-        // Add boolean expression
+        token = _Tokens[++_TokenIndex];
+        addBooleanExprAST(token);
     }
     // If it is a boolean and there a boolean value add the id and true/false to the ast
     else if (type === "boolean" && token.type === "T_BOOLVAL")
@@ -155,7 +200,7 @@ function addAssignmentAST(token) {
     }
     // If we are assigning the id to another id add them both to the ast
     // THis is wrong type checking
-    else if (token.type === "T_ID" && token.value === type)
+    else if (token.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(token) === type)
     {
         _AST.addNode(id, "leaf");
         _AST.addNode(token.value, "leaf");
@@ -188,6 +233,10 @@ function addIfAST(token) {
         token = _Tokens[++_TokenIndex];
         addBooleanExprAST(token);
     }
+    else
+    {
+        putMessage("Something happened that shouldn't happen.");
+    }
 }
 
 function addWhileAST(token) {
@@ -206,6 +255,10 @@ function addWhileAST(token) {
         token = _Tokens[++_TokenIndex];
         addBooleanExprAST(token);
     }
+    else
+    {
+        putMessage("Something happened that shouldn't happen.");
+    }
 }
 
 // If there is a problem end semantic analysis
@@ -215,25 +268,34 @@ function stopSemanticAnalysis() {
 }
 
 function addIntExprAST(token) {
+    // Get the next and previous tokens because we are in the middle of an intexpr
     var nextToken =  _Tokens[_TokenIndex + 1];
     var previousToken = _Tokens[_TokenIndex - 1];
 
+    // Add the plus and then the previous token
     _AST.addNode(token.value, "branch");
     _AST.addNode(previousToken.value, "leaf");
 
+    // If it is another integer expression add another intexpr
     if (_Tokens[_TokenIndex + 2].type === "T_INTOP")
     {
         _TokenIndex += 2;
         token = _Tokens[_TokenIndex];
         addIntExprAST(token);
     }
+    // If it is an id check to make sure it is of type in then add the new value
     else if (nextToken.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(nextToken) === "int")
     {
         _AST.addNode(nextToken.value, "leaf");
     }
+    // If it is just a digit add it
     else if (nextToken.type === "T_DIGIT")
     {
         _AST.addNode(nextToken.value, "leaf");
+    }
+    else
+    {
+        putMessage("Something happened that shouldn't happen.");
     }
 
     _TokenIndex += 2;
@@ -241,27 +303,105 @@ function addIntExprAST(token) {
 }
 
 function addBooleanExprAST(token) {
-    var tempIndex = _TokenIndex;
-    var nextToken = _Tokens[_TokenIndex + 1];
-
-    while (_Tokens[tempIndex].type != "T_BOOLOP")
+    if (token.type === "T_LEFTPAREN")
     {
+        token = _Tokens[++_TokenIndex];
+    }
+
+    var tempIndex = _TokenIndex;
+    var numberOfBoolOps = 0;
+
+    // Calculate the number of boolean operators
+    while (_Tokens[tempIndex].type != "T_LEFTBRACE")
+    {
+        if (_Tokens[tempIndex].type === "T_BOOLOP")
+            numberOfBoolOps++;
         tempIndex++;
     }
 
-    _AST.addNode(_Tokens[tempIndex].value, "branch");
+    // If there is only one boolean operator there is no need to parse more boolean expressions
+    if (numberOfBoolOps === 1)
+    {
+        tempIndex = _TokenIndex;
 
+        // Get the index of the boolean expression
+        while (_Tokens[tempIndex].type != "T_BOOLOP")
+        {
+            tempIndex++;
+        }
+
+        // Add the boolean operator
+        _AST.addNode(_Tokens[tempIndex].value, "branch");
+
+        // Add the left expression
+        checkForBooleanExpr(token);
+
+        // Get the next token after the boolean operator
+        token = _Tokens[_TokenIndex];
+
+        // Add the right expression
+        checkForBooleanExpr(token);
+    }
+    // There are more boolean expressions in the boolean expression
+    else
+    {
+        var middleOperator =  Math.ceil(numberOfBoolOps / 2);
+        tempIndex = _TokenIndex;
+        numberOfBoolOps = 0;
+
+        // Get the index of the boolean expression
+        while (_Tokens[tempIndex].type != "T_LEFTBRACE")
+        {
+            if (_Tokens[tempIndex].type === "T_BOOLOP")
+                numberOfBoolOps++;
+
+            if (numberOfBoolOps <= middleOperator)
+                tempIndex++;
+        }
+
+        // Add the boolean operator
+        _AST.addNode(_Tokens[tempIndex].value, "branch");
+
+        // Add a boolean expression on the left
+        addBooleanExprAST(token);
+
+        // Get the token after the boolean operator
+        token = _Tokens[_TokenIndex];
+
+        // Add the boolean expression on the right
+        addBooleanExprAST(token);
+    }
+
+    _TokenIndex++;
+    _AST.atLeaf();
+}
+
+function checkForBooleanExpr(token) {
+    var nextToken = _Tokens[_TokenIndex + 1];
     if (nextToken.type === "T_INTOP")
     {
         token = _Tokens[++_TokenIndex];
         addIntExprAST(token);
+        _TokenIndex += 2;
     }
-    else if (nextToken.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(nextToken) === "int")
+    else if (token.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(token) === "int")
     {
-        _AST.addNode(nextToken.value, "leaf");
+        _AST.addNode(token.value, "leaf");
+        _TokenIndex += 2;
     }
-    else if (nextToken.type === "T_DIGIT")
+    else if (token.type === "T_DIGIT")
     {
-        _AST.addNode(nextToken.value, "leaf");
+        _AST.addNode(token.value, "leaf");
+        _TokenIndex += 2;
+    }
+    else if (token.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(token) === "boolean")
+    {
+        _AST.addNode(token.value, "leaf");
+        _TokenIndex += 2;
+    }
+    else if (token.type === "T_BOOLVAL")
+    {
+        _AST.addNode(token.value, "leaf");
+        _TokenIndex += 2;
     }
 }
