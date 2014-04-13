@@ -5,7 +5,130 @@
  -------- */
 
 function SemanticAnalysis() {
-    buildSymbolTableAndAST();
+    putMessage("Semantic  Analysis has started.");
+    CSTToAST(_CST.root);
+    //buildSymbolTableAndAST();
+    putMessage(_AST.toString());
+}
+
+function CSTToAST(node) {
+    if(!isNaN(node.value) || node.value === "true" || node.value === "false") {
+        _AST.addNode(node.value, "leaf");
+        return;
+    }
+
+    if (node.value === "Block")
+    {
+        _AST.addNode("{}", "branch");
+        CSTToAST(node.children[1]);
+        _AST.atLeaf();
+    }
+    else if (node.value === "StatementList")
+    {
+        if (node.children[0] != null)
+            CSTToAST(node.children[0]);
+        if (node.children[1] != null)
+            CSTToAST(node.children[1]);
+    }
+    else if (node.value === "Statement")
+    {
+        CSTToAST(node.children[0]);
+    }
+    else if (node.value === "PrintStatement")
+    {
+        _AST.addNode("Print", "branch");
+        CSTToAST(node.children[2]);
+        _AST.atLeaf();
+    }
+    else if (node.value === "AssignmentStatement")
+    {
+        _AST.addNode("=", "branch");
+        CSTToAST(node.children[0]);
+        CSTToAST(node.children[2]);
+    }
+    else if (node.value === "Block")
+    {
+        CSTToAST(node.children[1]);
+    }
+    else if (node.value === "VarDecl")
+    {
+        _AST.addNode("Declare", "branch");
+        _AST.addNode(node.children[0].value, "leaf");
+        CSTToAST(node.children[1]);
+        _AST.atLeaf();
+    }
+    else if (node.value === "IfStatement")
+    {
+        _AST.addNode("If", "branch");
+        CSTToAST(node.children[1]);
+        CSTToAST(node.children[2]);
+        _AST.atLeaf();
+    }
+    else if (node.value === "WhileStatement")
+    {
+        _AST.addNode("While", "branch");
+        CSTToAST(node.children[1]);
+        CSTToAST(node.children[2]);
+        _AST.atLeaf();
+    }
+    else if (node.value === "IntExpr")
+    {
+        if (node.children[1] != null)
+        {
+            _AST.addNode(node.children[1].value, "branch");
+            CSTToAST(node.children[0]);
+            CSTToAST(node.children[2]);
+            _AST.atLeaf();
+        }
+        else
+        {
+            CSTToAST(node.children[0]);
+        }
+    }
+    else if (node.value === "BooleanExpr")
+    {
+        if (node.children[2] != null)
+        {
+            _AST.addNode(node.children[2].value, "branch");
+            CSTToAST(node.children[1]);
+            CSTToAST(node.children[3]);
+            _AST.atLeaf();
+        }
+        else
+        {
+            CSTToAST(node.children[0]);
+        }
+    }
+    else if (node.value === "StringExpr")
+    {
+        CSTToAST(node.children[1]);
+    }
+    else if (node.value === "CharList")
+    {
+        var stringExpr = addCharList(node, "");
+        _AST.addNode(stringExpr, "leaf");
+    }
+    else if (node.value === "Id")
+    {
+        _AST.addNode(node.children[0].value, "leaf");
+    }
+    else
+    {
+        if (node.children[0] != null)
+            CSTToAST(node.children[0]);
+    }
+}
+
+function addCharList(node, string) {
+    string = string + node.children[0].value;
+
+    while(node.children[1] != null)
+    {
+        node = node.children[1];
+        string = string + node.children[0].value;
+    }
+
+    return string;
 }
 
 function buildSymbolTableAndAST() {
@@ -19,27 +142,27 @@ function buildSymbolTableAndAST() {
         // If we encounter a print token add a print structure to the ast
         if (token.type === "T_PRINT")
         {
-            this.addPrintAST(token);
+            addPrintAST(token);
         }
         // If we encounter a type add a variable declaration to the ast
         else if (token.type === "T_TYPE")
         {
-            this.addVarDeclAST(token);
+            addVarDeclAST(token);
         }
         // If we encounter an id add an assignment statement to the ast
         else if (token.type === "T_ID")
         {
-            this.addAssignmentAST(token);
+            addAssignmentAST(token);
         }
         // If we encounter an if add an if structure to the ast
         else if (token.type === "T_IF")
         {
-            this.addIfAST(token);
+            addIfAST(token);
         }
         // If we encounter a while add a while structure to the ast
         else if (token.type === "T_WHILE")
         {
-            this.addWhileAST(token);
+            addWhileAST(token);
         }
         // If we encounter a left brace add a branch to the ast and start a new scope
         else if (token.type === "T_LEFTBRACE")
@@ -78,10 +201,11 @@ function addPrintAST(token) {
     }
     else if (token.type === "T_QUOTES")
     {
+        token = _Tokens[++_TokenIndex];
         var stringExpr = "";
 
         // Get all the characters in the string
-        while (token.type != "T_QUOTES") {
+        while (token.type != "T_ENDQUOTES") {
             stringExpr += token.value;
             token = _Tokens[++_TokenIndex];
         }
@@ -94,8 +218,16 @@ function addPrintAST(token) {
     }
     else if (token.type === "T_LEFTPAREN")
     {
-        token = _Tokens[++_TokenIndex];
         addBooleanExprAST(token);
+    }
+    else if (token.type === "T_DIGIT")
+    {
+        _AST.addNode(token.value, "leaf");
+    }
+    else if (token.type === "T_ID" && !_SymbolTable.currentScope.isDeclared(token))
+    {
+        putMessage("Error: Variable " + token.value + " on line " + token.line);
+        stopSemanticAnalysis();
     }
     else
     {
@@ -103,7 +235,7 @@ function addPrintAST(token) {
     }
 
     _AST.atLeaf();
-    _TokenIndex++;
+    _TokenIndex += 2;
 
 }
 
@@ -129,8 +261,8 @@ function addVarDeclAST(token) {
     }
     else
     {
-        _SymbolTable.newSymbol(id, type);
-        _SymbolTable.currentScope.setDeclared(id);
+        _SymbolTable.newSymbol(token, type);
+        _SymbolTable.currentScope.setDeclared(token);
     }
 
     // Add the id to the ast, go back up the tree, and then move to the next token
@@ -179,7 +311,7 @@ function addAssignmentAST(token) {
         token = _Tokens[++_TokenIndex];
 
         // Get all the characters in the string
-        while (token.type != "T_QUOTES") {
+        while (token.type != "T_ENDQUOTES") {
             stringExpr += token.value;
             token = _Tokens[++_TokenIndex];
         }
@@ -189,7 +321,6 @@ function addAssignmentAST(token) {
     // If it is a boolean and a boolexpr is coming add it to the ast
     else if (type === "boolean" && token.type === "T_LEFTPAREN")
     {
-        token = _Tokens[++_TokenIndex];
         addBooleanExprAST(token);
     }
     // If it is a boolean and there a boolean value add the id and true/false to the ast
@@ -230,7 +361,6 @@ function addIfAST(token) {
     // If it is a boolean expression add a boolean expression
     else if (token.type === "T_LEFTPAREN")
     {
-        token = _Tokens[++_TokenIndex];
         addBooleanExprAST(token);
     }
     else
@@ -252,7 +382,6 @@ function addWhileAST(token) {
     // If it is a boolean expression add a boolean expression
     else if (token.type === "T_LEFTPAREN")
     {
-        token = _Tokens[++_TokenIndex];
         addBooleanExprAST(token);
     }
     else
@@ -298,26 +427,33 @@ function addIntExprAST(token) {
         putMessage("Something happened that shouldn't happen.");
     }
 
-    _TokenIndex += 2;
+    _TokenIndex++;
     _AST.atLeaf();
 }
 
 function addBooleanExprAST(token) {
-    if (token.type === "T_LEFTPAREN")
-    {
-        token = _Tokens[++_TokenIndex];
-    }
-
     var tempIndex = _TokenIndex;
     var numberOfBoolOps = 0;
+    var numberOfLeftParens = 0;
+    var numberOfRightParens = 0;
+    var loopVariable = true;
 
     // Calculate the number of boolean operators
-    while (_Tokens[tempIndex].type != "T_LEFTBRACE")
+    while (loopVariable)
     {
+        if (_Tokens[tempIndex].type === "T_LEFTPAREN")
+            numberOfLeftParens++;
         if (_Tokens[tempIndex].type === "T_BOOLOP")
             numberOfBoolOps++;
+        if (_Tokens[tempIndex].type === "T_RIGHTPAREN")
+            numberOfRightParens++;
+
+        if (numberOfLeftParens === numberOfRightParens)
+            loopVariable = false;
+
         tempIndex++;
     }
+    token = _Tokens[++_TokenIndex];
 
     // If there is only one boolean operator there is no need to parse more boolean expressions
     if (numberOfBoolOps === 1)
@@ -336,6 +472,7 @@ function addBooleanExprAST(token) {
         // Add the left expression
         checkForBooleanExpr(token);
 
+        _TokenIndex += 2;
         // Get the next token after the boolean operator
         token = _Tokens[_TokenIndex];
 
@@ -382,26 +519,22 @@ function checkForBooleanExpr(token) {
     {
         token = _Tokens[++_TokenIndex];
         addIntExprAST(token);
-        _TokenIndex += 2;
     }
-    else if (token.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(token) === "int")
+    else if (token.type === "T_ID" && _SymbolTable.currentScope.isDeclared(token))
     {
         _AST.addNode(token.value, "leaf");
-        _TokenIndex += 2;
     }
     else if (token.type === "T_DIGIT")
     {
         _AST.addNode(token.value, "leaf");
-        _TokenIndex += 2;
-    }
-    else if (token.type === "T_ID" && _SymbolTable.currentScope.getSymbolType(token) === "boolean")
-    {
-        _AST.addNode(token.value, "leaf");
-        _TokenIndex += 2;
     }
     else if (token.type === "T_BOOLVAL")
     {
         _AST.addNode(token.value, "leaf");
-        _TokenIndex += 2;
+    }
+    else
+    {
+        putMessage("Error: Cannot use " + token.value + " in a boolean expression on line " + token.line);
+        stopSemanticAnalysis();
     }
 }

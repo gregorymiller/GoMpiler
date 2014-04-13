@@ -86,7 +86,7 @@ function SymbolTable() {
 // The values of a symbol
 var Symbol = function(id, type) {
     this.id = id.value;
-    this.type = type.value;
+    this.type = type;
     this.line = id.line;
     this.value = null;
     this.used = false;
