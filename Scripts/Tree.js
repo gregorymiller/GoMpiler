@@ -9,8 +9,8 @@ var Tree = function() {
     this.root = null;
     this.current = null;
 
-    this.addNode = function(id, leafOrBranch) {
-        var node = new Node(id);
+    this.addNode = function(id, line, leafOrBranch) {
+        var node = new Node(id, line);
 
         // If the root is null at the node at the root otherwise make a child node
         if (this.root === null)
@@ -74,8 +74,9 @@ var Tree = function() {
     };
 };
 
-var Node = function(node) {
+var Node = function(node, line) {
     this.value = node;
     this.children = new Array();
     this.parent = null;
+    this.line = line;
 };

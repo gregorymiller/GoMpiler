@@ -196,8 +196,35 @@ var Scope = function(parent) {
         return trueFalse;
     };
 
-    this.setSymbolValue = function(key, value) {
+    // Checks if the variable is declared in current scope
+    this.isDeclaredInCurrentScope = function(key) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if ((key.value === this.symbols[i].id) && this.symbols[i].declared === true)
+            {
+                return true;
+            }
+        }
 
+        return false;
+    };
+
+    // Sets the symbols value
+    this.setSymbolValue = function(key, value) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if (key.value === this.symbols[i].id)
+            {
+                this.symbols[i].value = value;
+                return true;
+            }
+        }
+
+        // If we are at the root and it has not been found return false otherwise continue to parents
+        if (this.parent === null)
+            return false;
+        else
+            var trueFalse = this.parent.setSymbolValue(key, value);
+
+        return trueFalse;
     };
 
     // Find the symbol's type else return null
