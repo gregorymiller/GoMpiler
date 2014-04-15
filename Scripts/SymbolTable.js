@@ -94,7 +94,7 @@ var Symbol = function(id, type) {
 
     this.toString = function() {
         return "Id: " + this.id + ", Type: " + this.type + ", Line: "
-            + this.line + ", Value: " + this.value + ", Used: " + this.used;
+            + this.line + ", Value: " + this.value + ", Used: " + this.used + ", Declared: " + this.declared;
     };
 };
 
@@ -171,11 +171,8 @@ var Scope = function(parent) {
             if (key.value === this.symbols[i].id)
             {
                 this.symbols[i].declared = true;
-                return true;
             }
         }
-
-        return false;
     };
 
     // Checks if the variable is declared
@@ -191,7 +188,7 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-            var trueFalse = this.parent.isUsed(key);
+            var trueFalse = this.parent.isDeclared(key);
 
         return trueFalse;
     };
@@ -214,7 +211,22 @@ var Scope = function(parent) {
             if (key.value === this.symbols[i].id)
             {
                 this.symbols[i].value = value;
-                return true;
+            }
+        }
+
+        // If we are at the root and it has not been found return false otherwise continue to parents
+        if (this.parent === null)
+            return;
+        else
+            this.parent.setSymbolValue(key, value);
+    };
+
+    // Gets the symbols value
+    this.getSymbolValue = function(key) {
+        for (var i = 0; i < this.symbols.length; i++) {
+            if (key.value === this.symbols[i].id)
+            {
+                return this.symbols[i].value;
             }
         }
 
@@ -222,9 +234,9 @@ var Scope = function(parent) {
         if (this.parent === null)
             return false;
         else
-            var trueFalse = this.parent.setSymbolValue(key, value);
+            var value = this.parent.getSymbolValue(key);
 
-        return trueFalse;
+        return value;
     };
 
     // Find the symbol's type else return null
