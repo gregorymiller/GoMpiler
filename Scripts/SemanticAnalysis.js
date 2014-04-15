@@ -18,10 +18,8 @@ function SemanticAnalysis() {
     }
 
     // Check for undeclared identifiers
-    if(checkForUnusedIdentifiers(_SymbolTable.root))
-    {
-        putMessage("Warning: There are variables that are declared but never used.");
-    }
+    if (_ErrorCount < 1)
+        checkForUnusedIdentifiers(_SymbolTable.root);
 
     // If there are no errors display the ast and the symbol table
     if (_ErrorCount < 1)
@@ -38,7 +36,7 @@ function checkForUnusedIdentifiers(node) {
         // For each symbol check if it is declared and if it is used
         for (var i in node.symbols) {
             if (node.symbols[i].used === false && node.symbols[i].declared)
-                return true;
+                putMessage("Warning: Variable " + node.symbols[i].id + " is declared but never used.");
         }
     }
     else
@@ -46,7 +44,7 @@ function checkForUnusedIdentifiers(node) {
         // For each symbol check if it is declared and if it is used
         for (var i in node.symbols) {
             if (node.symbols[i].used === false && node.symbols[i].declared)
-                return true;
+                putMessage("Warning: Variable " + node.symbols[i].id + " is declared but never used.");
         }
 
         // For each child scope check their identifiers
@@ -54,8 +52,6 @@ function checkForUnusedIdentifiers(node) {
             checkForUnusedIdentifiers(node.children[j]);
         }
     }
-
-    return false;
 }
 
 function CSTToAST(node) {
@@ -495,8 +491,12 @@ function buildSymbolTable(node) {
         {
             buildSymbolTable(node.children[0]);
 
+            if (node.children[1].value === "==" || node.children[1].value === "!=")
+            {
+                // Will be handled by the other if statement
+            }
             // Check that  if the right child is an identifier that it is declared
-            if (!_SymbolTable.currentScope.isDeclared(node.children[1]))
+            else if (!_SymbolTable.currentScope.isDeclared(node.children[1]))
             {
                 _ErrorCount++;
                 putMessage("Error: Variable " + node.children[1].value + " on line " + node.children[1].line
@@ -523,8 +523,12 @@ function buildSymbolTable(node) {
         {
             buildSymbolTable(node.children[1]);
 
+            if (node.children[0].value === "==" || node.children[0].value === "!=")
+            {
+                // Will be handled by the other if statement
+            }
             // Check that  if the left child is an identifier that it is declared
-            if (!_SymbolTable.currentScope.isDeclared(node.children[0]))
+            else if (!_SymbolTable.currentScope.isDeclared(node.children[0]))
             {
                 _ErrorCount++;
                 putMessage("Error: Variable " + node.children[0].value + " on line " + node.children[0].line
