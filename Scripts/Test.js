@@ -49,16 +49,14 @@ function test5() {
     var output = document.getElementById("taSourceCode");
     output.value = "";
 
-    output.value += "{\nint a\na = ^\n}$";
+    output.value += "{\nint a\na = 5\nboolean a\na = true\n}$";
 }
 
 function test6() {
     var output = document.getElementById("taSourceCode");
     output.value = "";
 
-    output.value += "{\nstring a\na = \"abc\"\n";
-    output.value += "    (\n";
-    output.value += "    )\n}$";
+    output.value += "{\nboolean a\na = ((true == true) != (false == (false == true)))\n}$";
 }
 
 function test7() {
@@ -66,7 +64,7 @@ function test7() {
     output.value = "";
 
     output.value += "{\n";
-    output.value += "    if ((5 !=6) == true)\n";
+    output.value += "    if ((5 != true) == true)\n";
     output.value += "    {\n";
     output.value += "    }\n}$";
 }
@@ -75,14 +73,14 @@ function test8() {
     var output = document.getElementById("taSourceCode");
     output.value = "";
 
-    output.value += "{\nstring nn\nnn = \"test\"\n}$";
+    output.value += "{\n{ b = true\n{ boolean b } }\n}$";
 }
 
 function test9 () {
     var output = document.getElementById("taSourceCode");
     output.value = "";
 
-    output.value += "{\n5 + 6\n}$";
+    output.value += "{\nint a\nboolean b\na = 1 + b\n}$";
 }
 
 function test10() {
@@ -90,8 +88,12 @@ function test10() {
     output.value = "";
 
     output.value += "{\nint a\na = 0\n";
-    output.value += "while (a = 9)\n";
+    output.value += "boolean b\nboolean c\n";
+    output.value += "while (((a != 9) == (\"test\" != \"alan\")) == ((5 == 5) != (b == c)))\n";
     output.value += "{\n";
+    output.value += "    print (\"a\")\n    string d\n";
+    output.value += "    d = \"yes\"\n    print (d)\n";
+    output.value += "    { int a\n    a = 5 }\n";
     output.value += "}\n}$";
 }
 

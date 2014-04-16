@@ -257,7 +257,8 @@ function buildSymbolTable(node) {
         // Visit each of the children in the scope
         for (var i in node.children)
         {
-            buildSymbolTable(node.children[i]);
+            if (_ErrorCount === 0)
+                buildSymbolTable(node.children[i]);
         }
 
         // End the scope after all the children are visited
@@ -491,9 +492,21 @@ function buildSymbolTable(node) {
         {
             buildSymbolTable(node.children[0]);
 
-            if (node.children[1].value === "==" || node.children[1].value === "!=")
+            if (node.children[0].value === "==" || node.children[0].value === "!=")
             {
-                // Will be handled by the other if statement
+                return;
+            }
+            else if (node.children[1].value === "true" || node.children[1].value === "false")
+            {
+                return;
+            }
+            else if (node.children[1].value.indexOf("\"") != -1)
+            {
+                return;
+            }
+            else if (!isNaN(node.children[1].value))
+            {
+                   return;
             }
             // Check that  if the right child is an identifier that it is declared
             else if (!_SymbolTable.currentScope.isDeclared(node.children[1]))
@@ -525,7 +538,19 @@ function buildSymbolTable(node) {
 
             if (node.children[0].value === "==" || node.children[0].value === "!=")
             {
-                // Will be handled by the other if statement
+                return;
+            }
+            else if (node.children[0].value === "true" || node.children[0].value === "false")
+            {
+                return;
+            }
+            else if (node.children[0].value.indexOf("\"") != -1)
+            {
+                return;
+            }
+            else if (!isNaN(node.children[0].value))
+            {
+                return;
             }
             // Check that  if the left child is an identifier that it is declared
             else if (!_SymbolTable.currentScope.isDeclared(node.children[0]))
