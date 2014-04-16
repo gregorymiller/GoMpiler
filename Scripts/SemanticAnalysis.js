@@ -554,12 +554,13 @@ function buildSymbolTable(node) {
         // Made these variables to make the first statement easier to read
         var child1TrueOrFalse = (node.children[0].value === "true" || node.children[0].value === "false");
         var child2TrueOrFalse = (node.children[1].value === "true" || node.children[1].value === "false");
+        var child1IdType = _SymbolTable.currentScope.getSymbolType(node.children[0]);
+        var child2IdType = _SymbolTable.currentScope.getSymbolType(node.children[1]);
 
         // Check that the two things being compared are boolean values or identifiers of type boolean
         // If a variable is used check that we are using the right variable then see if it is initialized
-        if ((child1TrueOrFalse && child2TrueOrFalse)
-            || (child1TrueOrFalse && _SymbolTable.currentScope.getSymbolType(node.children[1]) === "boolean")
-            || (child2TrueOrFalse && _SymbolTable.currentScope.getSymbolType(node.children[0]) === "boolean"))
+        if ((child1TrueOrFalse && child2TrueOrFalse) || (child1TrueOrFalse && child2IdType === "boolean")
+            || (child2TrueOrFalse && child1IdType === "boolean"))
         {
             if (!_SymbolTable.currentScope.isUsed(node.children[1]) && _SymbolTable.currentScope.isDeclared(node.children[1]))
                 putMessage("Warning: Variable " + node.children[1].value + " is never initialized");
@@ -573,8 +574,8 @@ function buildSymbolTable(node) {
         // Check that the two things being compared are string values or identifiers of type string
         // If a variable is used check that we are using the right variable then see if it is initialized
         else if ((node.children[0].value.indexOf("\"") != -1 && node.children[1].value.indexOf("\"") != -1)
-                 || (node.children[1].value.indexOf("\"") != -1 && _SymbolTable.currentScope.getSymbolType(node.children[0]) === "string")
-                 || (node.children[0].value.indexOf("\"") != -1 && _SymbolTable.currentScope.getSymbolType(node.children[1]) === "string"))
+                 || (node.children[1].value.indexOf("\"") != -1 && child1IdType === "string")
+                 || (node.children[0].value.indexOf("\"") != -1 && child2IdType === "string"))
         {
             if (!_SymbolTable.currentScope.isUsed(node.children[1]) && _SymbolTable.currentScope.isDeclared(node.children[1]))
                 putMessage("Warning: Variable " + node.children[1].value + " is never initialized");
@@ -588,8 +589,8 @@ function buildSymbolTable(node) {
         // Check that the two things being compared are integer values or identifiers of type integer
         // If a variable is used check that we are using the right variable then see if it is initialized
         else if ((!isNaN(node.children[0].value) && !isNaN(node.children[1].value))
-                 || (!isNaN(node.children[0].value) && _SymbolTable.currentScope.getSymbolType(node.children[1]) === "int")
-                 || (!isNaN(node.children[1].value) && _SymbolTable.currentScope.getSymbolType(node.children[0]) === "int"))
+                 || (!isNaN(node.children[0].value) && child2IdType === "int")
+                 || (!isNaN(node.children[1].value) && child1IdType === "int"))
         {
             if (!_SymbolTable.currentScope.isUsed(node.children[1]) && _SymbolTable.currentScope.isDeclared(node.children[1]))
                 putMessage("Warning: Variable " + node.children[1].value + " is never initialized");
@@ -602,8 +603,7 @@ function buildSymbolTable(node) {
         }
         // Check that the two identifiers that are being compared are the same type and that they exist
         // If a variable is used check that we are using the right variable then see if it is initialized
-        else if ((_SymbolTable.currentScope.getSymbolType(node.children[0]) === _SymbolTable.currentScope.getSymbolType(node.children[1]))
-                    && _SymbolTable.currentScope.getSymbolType(node.children[0]) != null)
+        else if ((child1IdType === child2IdType) && child1IdType != null)
         {
             if (!_SymbolTable.currentScope.isUsed(node.children[1]))
                 putMessage("Warning: Variable " + node.children[1].value + " is never initialized");
@@ -622,7 +622,11 @@ function buildSymbolTable(node) {
         else
         {
             _ErrorCount++;
-            putMessage("Error: Type mismatch on line " + node.children[0].line);
+            var line = node.children[0].line;
+
+            if (line === -1)
+                line = node.children[1].line;
+            putMessage("Error: Type mismatch on line " + line);
             stopSemanticAnalysis();
         }
     }
