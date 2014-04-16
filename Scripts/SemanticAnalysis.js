@@ -404,8 +404,13 @@ function buildSymbolTable(node) {
     }
     else if (node.value === "Print")
     {
+        // If the child is an integer or boolean expression recursively call on the child to do type checking
+        if (node.children[0].value === "+" || node.children[0].value === "==" || node.children[0].value === "!=")
+        {
+            buildSymbolTable(node.children[0]);
+        }
         // Only need to check for identifiers because parse will guarantee correct things in print
-        if (node.children[0].value.length === 1 && isNaN(node.children[0].value) && node.children[0].value != "+")
+        else if (node.children[0].value.length === 1 && isNaN(node.children[0].value))
         {
             verbosePutMessage("Checking that variable " + node.children[0].value + " is declared");
 
