@@ -18,6 +18,10 @@
         <h4>Compiler Output:</h4>
         <textarea id="taOutput" cols="64" rows="32"></textarea>
     </div>
+    <div style="float:left; margin:0px 10px;">
+        <h4>Code:</h4>
+        <textarea id="taCode" cols="42" rows="19"></textarea>
+    </div>
 </div>
 
 <div style="margin-top:600px;">
@@ -47,6 +51,7 @@
 <script type="text/javascript" src="Scripts/Test.js"></script>
 <script type="text/javascript" src="Scripts/globals.js"></script>
 <script type="text/javascript" src="Scripts/SemanticAnalysis.js"></script>
+<script type="text/javascript" src="Scripts/CodeGeneration.js"></script>
 <script type="text/javascript">
 
     function init()
@@ -61,6 +66,11 @@
         _CST = new Tree();
         _AST = new Tree();
         _CurrentToken = null;
+        _ProgramCode = [];
+        _ReferenceTable = {};
+        _JumpTable = {};
+        _HeapLocation = 255;
+        _CodeLocation = 0;
     }
 
     function btnCompile_click()

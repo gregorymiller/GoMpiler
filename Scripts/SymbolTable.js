@@ -26,6 +26,20 @@ function SymbolTable() {
         }
     };
 
+    this.traverseScope = function() {
+        if (this.currentScope === null) {
+            this.currentScope = this.root;
+        }
+        else {
+            for (var i in this.currentScope.children) {
+                if (this.currentScope.children[i].visited === false) {
+                    this.currentScope = this.currentScope.children[i];
+                    this.currentScope.visited = true;
+                }
+            }
+        }
+    };
+
     // Back up from a current scope
     this.endScope = function() {
         this.currentScope = this.currentScope.parent;
@@ -33,7 +47,7 @@ function SymbolTable() {
 
     // Add a new symbol to the current scope and return true or false and error handle accordingly
     this.newSymbol = function(id, type) {
-        var symbol =  new Symbol(id, type);
+        var symbol =  new Symbol(id, type, this.currentScope);
         var problems = this.currentScope.addSymbol(symbol);
 
         // If there are no problems just return otherwise throw an error
@@ -84,13 +98,14 @@ function SymbolTable() {
 }
 
 // The values of a symbol
-var Symbol = function(id, type) {
+var Symbol = function(id, type, scope) {
     this.id = id.value;
     this.type = type;
     this.line = id.line;
     this.value = null;
     this.used = false;
     this.declared = false;
+    this.scope = scope;
 
     this.toString = function() {
         return "Id: " + this.id + ", Type: " + this.type + ", Line: "
@@ -103,6 +118,7 @@ var Scope = function(parent) {
     this.parent = parent;
     this.children = new Array();
     this.symbols = new Array();
+    this.visited = false;
 
     // Check if a symbol exists if it does not add it and return that it was successful
     this.addSymbol = function(symbol) {
@@ -113,7 +129,7 @@ var Scope = function(parent) {
     // Check each variable in the current scope to see if it already exists
     this.getSymbol = function(key) {
         for (var i = 0; i < this.symbols.length; i++) {
-            if (key === this.symbols[i].id)
+            if (key.value === this.symbols[i].id)
             {
                 return this.symbols[i];
             }

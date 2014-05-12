@@ -26,6 +26,7 @@ function SemanticAnalysis() {
     {
         putMessage(_AST.toString());
         putMessage(_SymbolTable.toString());
+        codeGeneration();
     }
 }
 
@@ -679,7 +680,7 @@ function addIntExpr(node) {
     if (_SymbolTable.currentScope.getSymbolValue(node.children[1]) === false)
         intExpr = intExpr + parseInt(node.children[1].value);
     else
-        intExpr = intExpr + parseInt(_SymbolTable.currentScope.getSymbolValue(node.children[1]));
+        intExpr = parseInt(_SymbolTable.currentScope.getSymbolValue(node.children[1]));
 
     return intExpr;
 }

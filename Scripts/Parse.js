@@ -646,7 +646,7 @@ function parseBooleanExpr() {
     else
     {
         putMessage("Error: Unexpected token while parsing: " + _CurrentToken.toStringType()
-            + " on line: " + _CurrentToken.line + " expecting (.");
+            + " on line: " + _CurrentToken.line + " expecting (, true, or false.");
         _ErrorCount++;
         return false;
     }
