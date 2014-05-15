@@ -75,9 +75,7 @@ function generateProgramCode(node) {
                 _ProgramCode[_CodeLocation++] = "A2";
                 _ProgramCode[_CodeLocation++] = "01";
 
-                _ProgramCode[_CodeLocation++] = "AC";
-                _ProgramCode[_CodeLocation++] = tempKey;
-                _ProgramCode[_CodeLocation++] = "00";
+                loadYRegisterFromMemory(tempKey);
 
                 _ProgramCode[_CodeLocation++] = "FF";
             }
@@ -88,9 +86,7 @@ function generateProgramCode(node) {
                 _ProgramCode[_CodeLocation++] = "A2";
                 _ProgramCode[_CodeLocation++] = "02";
 
-                _ProgramCode[_CodeLocation++] = "AC";
-                _ProgramCode[_CodeLocation++] = tempKey;
-                _ProgramCode[_CodeLocation++] = "00";
+                loadYRegisterFromMemory(tempKey);
 
                 _ProgramCode[_CodeLocation++] = "FF";
             }
@@ -112,8 +108,7 @@ function generateProgramCode(node) {
             _ProgramCode[_CodeLocation++] = "A2";
             _ProgramCode[_CodeLocation++] = "02";
 
-            _ProgramCode[_CodeLocation++] = "A0";
-            _ProgramCode[_CodeLocation++] = _HeapLocation.toString(16).toUpperCase();
+            loadYRegisterWithConstant(_HeapLocation.toString(16).toUpperCase());
             _ProgramCode[_CodeLocation++] = "FF";
 
             _HeapLocation--;
@@ -134,14 +129,242 @@ function generateProgramCode(node) {
             _ProgramCode[_CodeLocation++] = "A2";
             _ProgramCode[_CodeLocation++] = "02";
 
-            _ProgramCode[_CodeLocation++] = "A0";
-            _ProgramCode[_CodeLocation++] = _HeapLocation.toString(16).toUpperCase();
+            loadYRegisterWithConstant(_HeapLocation.toString(16).toUpperCase());
             _ProgramCode[_CodeLocation++] = "FF";
 
             _HeapLocation--;
         }
         else if (child.value === "==" || child.value === "!=") {
+            // For each expression in the child, so true/false or a boolean expression
+            for (var i = 0; i < child.children.length; i++) {
+                // If it is  an integer compute its value and store it to be compared
+                if (child.children[i].value === "+" || !isNaN(child.children[i].value)) {
+                    var hex = [];
+                    addIntegerExpression(hex, child.children[i]);
 
+                    if (hex[hex.length - 1].indexOf("T") === -1) {
+                        _ProgramCode[_CodeLocation++] = "A9";
+                        _ProgramCode[_CodeLocation++] = hex[hex.length - 1];
+                    }
+                    else {
+                        loadAccumulatorFromMemory(hex[hex.length - 1]);
+                    }
+
+                    storeAccumulatorInMemory("00");
+
+                    for (var j = hex.length - 2; j >= 0; j--) {
+                        _ProgramCode[_CodeLocation++] = "A9";
+                        _ProgramCode[_CodeLocation++] = hex[j];
+
+                        addWithCarryIntoMemory("00");
+                        storeAccumulatorInMemory("00");
+                    }
+
+                    // If it is the first value store it in the x register
+                    if (i === 0) {
+                        loadXRegisterFromMemory("00");
+                    }
+                }
+                // If it a variable get the value from the variable location
+                else if (child.children[i].value.length === 1) {
+                    var id = child.children[i];
+                    var tempKey = getReferenceKey(id);
+
+                    // If it is the first value store in it the x register
+                    if (i === 0) {
+                        loadXRegisterFromMemory(tempKey);
+                    }
+                    // If it is the second value store it in the 00 memory location
+                    else {
+                        loadAccumulatorFromMemory(tempKey);
+
+                        storeAccumulatorInMemory("00");
+                    }
+                }
+                // If it is a true/false store it in the memory location 00 or in the x register depending on if it is the first or second value
+                else if (child.children[i].value === "true" || child.children[i].value === "false") {
+                    var boolean = addBooleanExpression(child.children[i]);
+
+                    _ProgramCode[_CodeLocation++] = "A9";
+                    _ProgramCode[_CodeLocation++] = boolean;
+
+                    storeAccumulatorInMemory("00");
+
+                    if (i === 0) {
+                        loadXRegisterFromMemory("00");
+                    }
+                }
+            }
+
+            if (child.value === "==") {
+                // Add the comparison and a jump
+                var jump = getJumpKey();
+                var secondJump = getJumpKey();
+
+                compareXRegisterToMemory();
+                branchNotEquals(jump);
+
+                // Store the current code location
+                var beginLocation = _CodeLocation;
+
+                // Print true
+                var trueOut = "true";
+                var tempHeap = _HeapLocation - trueOut.length;
+
+                // Put the characters on the heap
+                for (var i = 0; i < trueOut.length; i++) {
+                    _ProgramCode[tempHeap++] = trueOut.charCodeAt(i).toString(16).toUpperCase();
+                }
+                _ProgramCode[tempHeap] = "00";
+
+                _HeapLocation = _HeapLocation - trueOut.length;
+
+                _ProgramCode[_CodeLocation++] = "A2";
+                _ProgramCode[_CodeLocation++] = "02";
+
+                loadYRegisterWithConstant(_HeapLocation.toString(16).toUpperCase());
+                _ProgramCode[_CodeLocation++] = "FF";
+
+                _HeapLocation--;
+
+                // Jump past print false
+                addGuaranteedJump();
+                branchNotEquals(secondJump);
+
+                var toFalse = _CodeLocation;
+
+                // Print false
+                var falseOut = "false";
+                var tempHeap = _HeapLocation - falseOut.length;
+
+                // Put the characters on the heap
+                for (var i = 0; i < falseOut.length; i++) {
+                    _ProgramCode[tempHeap++] = falseOut.charCodeAt(i).toString(16).toUpperCase();
+                }
+                _ProgramCode[tempHeap] = "00";
+
+                _HeapLocation = _HeapLocation - falseOut.length;
+
+                _ProgramCode[_CodeLocation++] = "A2";
+                _ProgramCode[_CodeLocation++] = "02";
+
+                loadYRegisterWithConstant(_HeapLocation.toString(16).toUpperCase());
+                _ProgramCode[_CodeLocation++] = "FF";
+
+                _HeapLocation--;
+
+                // Compute the jump distance
+                var endLocation = _CodeLocation - toFalse;
+                var jumpToFalse = toFalse - beginLocation;
+
+                endLocation = endLocation.toString(16).toUpperCase();
+                jumpToFalse = jumpToFalse.toString(16).toUpperCase();
+
+                // If it is only one digit add a zero
+                if (endLocation.length === 1) {
+                    endLocation = "0" + endLocation;
+                }
+
+                if (jumpToFalse.length === 1) {
+                    jumpToFalse = "0" + jumpToFalse;
+                }
+
+                // Replace all of those jumps with the jump distance
+                for (var i = 0; i < _ProgramCode.length; i++) {
+                    if (_ProgramCode[i] === secondJump) {
+                        _ProgramCode[i] = endLocation;
+                    }
+
+                    if (_ProgramCode[i] === jump) {
+                        _ProgramCode[i] = jumpToFalse;
+                    }
+                }
+            }
+            else if (child.value === "!=") {
+                // Add the comparison and a jump
+                var jump = getJumpKey();
+                var secondJump = getJumpKey();
+
+                compareXRegisterToMemory();
+
+                branchNotEquals(jump);
+
+                // Store the current code location
+                var beginLocation = _CodeLocation;
+
+                // Print true
+                var trueOut = "false";
+                var tempHeap = _HeapLocation - trueOut.length;
+
+                // Put the characters on the heap
+                for (var i = 0; i < trueOut.length; i++) {
+                    _ProgramCode[tempHeap++] = trueOut.charCodeAt(i).toString(16).toUpperCase();
+                }
+                _ProgramCode[tempHeap] = "00";
+
+                _HeapLocation = _HeapLocation - trueOut.length;
+
+                _ProgramCode[_CodeLocation++] = "A2";
+                _ProgramCode[_CodeLocation++] = "02";
+
+                loadYRegisterWithConstant(_HeapLocation.toString(16).toUpperCase());
+                _ProgramCode[_CodeLocation++] = "FF";
+
+                _HeapLocation--;
+
+                // Jump past print false
+                addGuaranteedJump();
+                branchNotEquals(secondJump);
+
+                var toFalse = _CodeLocation;
+
+                // Print false
+                var falseOut = "true";
+                var tempHeap = _HeapLocation - falseOut.length;
+
+                // Put the characters on the heap
+                for (var i = 0; i < falseOut.length; i++) {
+                    _ProgramCode[tempHeap++] = falseOut.charCodeAt(i).toString(16).toUpperCase();
+                }
+                _ProgramCode[tempHeap] = "00";
+
+                _HeapLocation = _HeapLocation - falseOut.length;
+
+                _ProgramCode[_CodeLocation++] = "A2";
+                _ProgramCode[_CodeLocation++] = "02";
+
+                loadYRegisterWithConstant(_HeapLocation.toString(16).toUpperCase());
+                _ProgramCode[_CodeLocation++] = "FF";
+
+                _HeapLocation--;
+
+                // Compute the jump distance
+                var endLocation = _CodeLocation - toFalse;
+                var jumpToFalse = toFalse - beginLocation;
+
+                endLocation = endLocation.toString(16).toUpperCase();
+                jumpToFalse = jumpToFalse.toString(16).toUpperCase();
+
+                // If it is only one digit add a zero
+                if (endLocation.length === 1) {
+                    endLocation = "0" + endLocation;
+                }
+
+                if (jumpToFalse.length === 1) {
+                    jumpToFalse = "0" + jumpToFalse;
+                }
+
+                // Replace all of those jumps with the jump distance
+                for (var i = 0; i < _ProgramCode.length; i++) {
+                    if (_ProgramCode[i] === secondJump) {
+                        _ProgramCode[i] = endLocation;
+                    }
+
+                    if (_ProgramCode[i] === jump) {
+                        _ProgramCode[i] = jumpToFalse;
+                    }
+                }
+            }
         }
         // Otherwise it is an integer expression
         else {
@@ -151,31 +374,24 @@ function generateProgramCode(node) {
             // Load the first value into memory
             _ProgramCode[_CodeLocation++] = "A9";
             _ProgramCode[_CodeLocation++] = hex[0];
-            _ProgramCode[_CodeLocation++] = "8D";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
+
+            storeAccumulatorInMemory("00");
 
             // If there are more values add them
             for (var i = 1; i < hex.length; i++) {
                 _ProgramCode[_CodeLocation++] = "A9";
                 _ProgramCode[_CodeLocation++] = hex[i];
 
-                _ProgramCode[_CodeLocation++] = "6D";
-                _ProgramCode[_CodeLocation++] = "00";
-                _ProgramCode[_CodeLocation++] = "00";
+                addWithCarryIntoMemory("00");
 
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = "00";
-                _ProgramCode[_CodeLocation++] = "00";
+                storeAccumulatorInMemory("00");
             }
 
             // Print the values that have been calculated
             _ProgramCode[_CodeLocation++] = "A2";
             _ProgramCode[_CodeLocation++] = "01";
 
-            _ProgramCode[_CodeLocation++] = "AC";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
+            loadYRegisterFromMemory("00");
 
             _ProgramCode[_CodeLocation++] = "FF";
         }
@@ -190,49 +406,48 @@ function generateProgramCode(node) {
             var hex = [];
             addIntegerExpression(hex, value);
 
-            // Get the first number in the integer expression and store it in the variable location
-            _ProgramCode[_CodeLocation++] = "A9";
-            _ProgramCode[_CodeLocation++] = hex[0];
-            _ProgramCode[_CodeLocation++] = "8D";
-            _ProgramCode[_CodeLocation++] = tempKey;
-            _ProgramCode[_CodeLocation++] = "00";
+            if (hex[hex.length - 1].indexOf("T") === -1) {
+                _ProgramCode[_CodeLocation++] = "A9";
+                _ProgramCode[_CodeLocation++] = hex[hex.length - 1];
+            }
+            else {
+                loadAccumulatorFromMemory(hex[hex.length - 1]);
+            }
 
-            // Add the values and store them in the variable location
-            for (var i = 1; i < hex.length; i++) {
+            storeAccumulatorInMemory(tempKey);
+
+            for (var i = hex.length - 2; i >= 0; i--) {
                 _ProgramCode[_CodeLocation++] = "A9";
                 _ProgramCode[_CodeLocation++] = hex[i];
 
-                _ProgramCode[_CodeLocation++] = "6D";
-                _ProgramCode[_CodeLocation++] = tempKey;
-                _ProgramCode[_CodeLocation++] = "00";
+                addWithCarryIntoMemory(tempKey);
 
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = tempKey;
-                _ProgramCode[_CodeLocation++] = "00";
+                storeAccumulatorInMemory(tempKey);
             }
         }
         // If it is a boolean get the value of it and store it in the variable location
         else if (type === "boolean") {
             var boolean = addBooleanExpression(value);
 
-            _ProgramCode[_CodeLocation++] = "A9";
-            _ProgramCode[_CodeLocation++] = boolean;
-            _ProgramCode[_CodeLocation++] = "8D";
-            _ProgramCode[_CodeLocation++] = tempKey;
-            _ProgramCode[_CodeLocation++] = "00";
+            if (boolean.indexOf("T") === -1) {
+                _ProgramCode[_CodeLocation++] = "A9";
+                _ProgramCode[_CodeLocation++] = boolean;
+
+                storeAccumulatorInMemory(tempKey);
+            }
+            else {
+                loadAccumulatorFromMemory(boolean);
+                storeAccumulatorInMemory(tempKey);
+            }
         }
         else if (type === "string") {
             // If it is another variable store that variables reference in the current variables location
             if (value.value.length === 1) {
                 var idReference = getReferenceKey(value);
 
-                _ProgramCode[_CodeLocation++] = "AD";
-                _ProgramCode[_CodeLocation++] = idReference;
-                _ProgramCode[_CodeLocation++] = "00";
+                loadAccumulatorFromMemory(idReference);
 
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = tempKey;
-                _ProgramCode[_CodeLocation++] = "00";
+                storeAccumulatorInMemory(tempKey);
             }
             // Otherwise put the string on the heap and store the heap location in the variable location
             else {
@@ -250,9 +465,7 @@ function generateProgramCode(node) {
                 _ProgramCode[_CodeLocation++] = "A9";
                 _ProgramCode[_CodeLocation++] = _HeapLocation.toString(16).toUpperCase();
 
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = tempKey;
-                _ProgramCode[_CodeLocation++] = "00";
+                storeAccumulatorInMemory(tempKey);
 
                 _HeapLocation--;
             }
@@ -265,9 +478,7 @@ function generateProgramCode(node) {
         _ProgramCode[_CodeLocation++] = "A9";
         _ProgramCode[_CodeLocation++] = "00";
 
-        _ProgramCode[_CodeLocation++] = "8D";
-        _ProgramCode[_CodeLocation++] = getReferenceKey(id);
-        _ProgramCode[_CodeLocation++] = "00";
+        storeAccumulatorInMemory(getReferenceKey(id));
     }
     else if (node.value === "If") {
         var booleanExpression = node.children[0];
@@ -280,30 +491,28 @@ function generateProgramCode(node) {
                 var hex = [];
                 addIntegerExpression(hex, booleanExpression.children[i]);
 
-                _ProgramCode[_CodeLocation++] = "A9";
-                _ProgramCode[_CodeLocation++] = hex[0];
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = "00";
-                _ProgramCode[_CodeLocation++] = "00";
+                if (hex[hex.length - 1].indexOf("T") === -1) {
+                    _ProgramCode[_CodeLocation++] = "A9";
+                    _ProgramCode[_CodeLocation++] = hex[hex.length - 1];
+                }
+                else {
+                    loadAccumulatorFromMemory(hex[hex.length - 1]);
+                }
 
-                for (var j = 1; j < hex.length; j++) {
+                storeAccumulatorInMemory("00");
+
+                for (var j = hex.length - 2; j >= 0; j--) {
                     _ProgramCode[_CodeLocation++] = "A9";
                     _ProgramCode[_CodeLocation++] = hex[j];
 
-                    _ProgramCode[_CodeLocation++] = "6D";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    addWithCarryIntoMemory("00");
 
-                    _ProgramCode[_CodeLocation++] = "8D";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    storeAccumulatorInMemory("00");
                 }
 
                 // If it is the first value store it in the x register
                 if (i === 0) {
-                    _ProgramCode[_CodeLocation++] = "AE";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadXRegisterFromMemory("00");
                 }
             }
             // If it a variable get the value from the variable location
@@ -313,19 +522,13 @@ function generateProgramCode(node) {
 
                 // If it is the first value store in it the x register
                 if (i === 0) {
-                    _ProgramCode[_CodeLocation++] = "AE";
-                    _ProgramCode[_CodeLocation++] = tempKey;
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadXRegisterFromMemory(tempKey);
                 }
                 // If it is the second value store it in the 00 memory location
                 else {
-                    _ProgramCode[_CodeLocation++] = "AD";
-                    _ProgramCode[_CodeLocation++] = tempKey;
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadAccumulatorFromMemory(tempKey);
 
-                    _ProgramCode[_CodeLocation++] = "8D";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    storeAccumulatorInMemory("00");
                 }
             }
             // If it is a true/false store it in the memory location 00 or in the x register depending on if it is the first or second value
@@ -335,14 +538,10 @@ function generateProgramCode(node) {
                 _ProgramCode[_CodeLocation++] = "A9";
                 _ProgramCode[_CodeLocation++] = boolean;
 
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = "00";
-                _ProgramCode[_CodeLocation++] = "00";
+                storeAccumulatorInMemory("00");
 
                 if (i === 0) {
-                    _ProgramCode[_CodeLocation++] = "AE";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadXRegisterFromMemory("00");
                 }
             }
         }
@@ -350,12 +549,10 @@ function generateProgramCode(node) {
         if (booleanExpression.value === "==") {
             // Add the comparison and a jump
             var jump = getJumpKey();
-            _ProgramCode[_CodeLocation++] = "EC";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
 
-            _ProgramCode[_CodeLocation++] = "D0";
-            _ProgramCode[_CodeLocation++] = jump;
+            compareXRegisterToMemory();
+
+            branchNotEquals(jump);
 
             // Store the current code location
             var beginLocation = _CodeLocation;
@@ -381,7 +578,70 @@ function generateProgramCode(node) {
             }
         }
         else if (booleanExpression.value === "!=") {
+            // Add the comparison and a jump
+            var jump = getJumpKey();
+            var secondJump = getJumpKey();
 
+            compareXRegisterToMemory();
+
+            // It is false so jump to the statement that will jump to the code
+            branchNotEquals(jump);
+
+            var beforeFalseComparison = _CodeLocation;
+
+            addGuaranteedJump();
+
+            // It is true so jump over everything
+            branchNotEquals(secondJump);
+
+            // Store the current code location
+            var beginLocation = _CodeLocation;
+
+            // Generate the code
+            generateProgramCode(block);
+
+            _ProgramCode[_CodeLocation++] = "A9";
+            _ProgramCode[_CodeLocation++] = "00";
+
+            storeAccumulatorInMemory("00");
+
+
+            _ProgramCode[_CodeLocation++] = "A2";
+            _ProgramCode[_CodeLocation++] = "00";
+
+            compareXRegisterToMemory();
+
+            // Compute the jump distance
+            var endLocation = _CodeLocation - beforeFalseComparison;
+
+            var jumpToCode = (254 - _CodeLocation + beginLocation).toString(16).toUpperCase();
+
+            branchNotEquals(jumpToCode);
+
+            var fullJump = _CodeLocation - beginLocation;
+
+            endLocation = endLocation.toString(16).toUpperCase();
+            fullJump = fullJump.toString(16).toUpperCase();
+
+            // If it is only one digit add a zero
+            if (endLocation.length === 1) {
+                endLocation = "0" + endLocation;
+            }
+
+            if (fullJump.length === 1) {
+                fullJump = "0" + fullJump;
+            }
+
+            // Replace all of those jumps with the jump distance
+            for (var i = 0; i < _ProgramCode.length; i++) {
+                if (_ProgramCode[i] === jump) {
+                    _ProgramCode[i] = endLocation;
+                }
+
+                if (_ProgramCode[i] === secondJump) {
+                    _ProgramCode[i] = fullJump;
+                }
+            }
         }
         // If it is straight true just generate the block do not jump
         else if (booleanExpression.value === "true") {
@@ -390,8 +650,7 @@ function generateProgramCode(node) {
         // If it is false do not even compare just jump
         else if (booleanExpression.value === "false") {
             var jump = getJumpKey();
-            _ProgramCode[_CodeLocation++] = "D0";
-            _ProgramCode[_CodeLocation++] = jump;
+            branchNotEquals(jump);
 
             var beginLocation = _CodeLocation;
 
@@ -425,29 +684,27 @@ function generateProgramCode(node) {
                 var hex = [];
                 addIntegerExpression(hex, booleanExpression.children[i]);
 
-                _ProgramCode[_CodeLocation++] = "A9";
-                _ProgramCode[_CodeLocation++] = hex[0];
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = "00";
-                _ProgramCode[_CodeLocation++] = "00";
+                if (hex[hex.length - 1].indexOf("T") === -1) {
+                    _ProgramCode[_CodeLocation++] = "A9";
+                    _ProgramCode[_CodeLocation++] = hex[hex.length - 1];
+                }
+                else {
+                    loadAccumulatorFromMemory(hex[hex.length - 1]);
+                }
 
-                for (var j = 1; j < hex.length; j++) {
+                storeAccumulatorInMemory("00");
+
+                for (var j = hex.length - 2; j >= 0; j--) {
                     _ProgramCode[_CodeLocation++] = "A9";
                     _ProgramCode[_CodeLocation++] = hex[j];
 
-                    _ProgramCode[_CodeLocation++] = "6D";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    addWithCarryIntoMemory("00");
 
-                    _ProgramCode[_CodeLocation++] = "8D";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    storeAccumulatorInMemory("00");
                 }
 
                 if (i === 0) {
-                    _ProgramCode[_CodeLocation++] = "AE";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadXRegisterFromMemory("00");
                 }
             }
             // If it is an id store the value in the x register or in memory 00
@@ -456,18 +713,12 @@ function generateProgramCode(node) {
                 var tempKey = getReferenceKey(id);
 
                 if (i === 0) {
-                    _ProgramCode[_CodeLocation++] = "AE";
-                    _ProgramCode[_CodeLocation++] = tempKey;
-                    _ProgramCode[_CodeLocation++] = "00";
+                    storeAccumulatorInMemory(tempKey);
                 }
                 else {
-                    _ProgramCode[_CodeLocation++] = "AD";
-                    _ProgramCode[_CodeLocation++] = tempKey;
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadAccumulatorFromMemory(tempKey);
 
-                    _ProgramCode[_CodeLocation++] = "8D";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    storeAccumulatorInMemory("00");
                 }
             }
             // If it is true/false store the boolean value in the x register or in memory 00
@@ -477,14 +728,10 @@ function generateProgramCode(node) {
                 _ProgramCode[_CodeLocation++] = "A9";
                 _ProgramCode[_CodeLocation++] = boolean;
 
-                _ProgramCode[_CodeLocation++] = "8D";
-                _ProgramCode[_CodeLocation++] = "00";
-                _ProgramCode[_CodeLocation++] = "00";
+                storeAccumulatorInMemory("00");
 
                 if (i === 0) {
-                    _ProgramCode[_CodeLocation++] = "AE";
-                    _ProgramCode[_CodeLocation++] = "00";
-                    _ProgramCode[_CodeLocation++] = "00";
+                    loadXRegisterFromMemory("00");
                 }
             }
         }
@@ -492,39 +739,21 @@ function generateProgramCode(node) {
         if (booleanExpression.value === "==") {
             // Compare and set up the jump
             var jump = getJumpKey();
-            _ProgramCode[_CodeLocation++] = "EC";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
+            compareXRegisterToMemory();
 
-            _ProgramCode[_CodeLocation++] = "D0";
-            _ProgramCode[_CodeLocation++] = jump;
+            branchNotEquals(jump);
 
             // Get the code location before the block
             var beginLocation = _CodeLocation;
 
             generateProgramCode(block);
 
-            // Compare zero and one so that it is forced to jump to the while conditional
-            _ProgramCode[_CodeLocation++] = "A9";
-            _ProgramCode[_CodeLocation++] = "00";
-
-            _ProgramCode[_CodeLocation++] = "8D";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
-
-
-            _ProgramCode[_CodeLocation++] = "A2";
-            _ProgramCode[_CodeLocation++] = "01";
-
-            _ProgramCode[_CodeLocation++] = "EC";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
+            addGuaranteedJump();
 
             // Compute the jump location to the conditional
             var jumpToWhile  = (254 - _CodeLocation + startLocation).toString(16).toUpperCase();
 
-            _ProgramCode[_CodeLocation++] = "D0";
-            _ProgramCode[_CodeLocation++] = jumpToWhile;
+            branchNotEquals(jumpToWhile);
 
             // Get the ending location so that the while can jump over all of its code
             var endLocation = _CodeLocation - beginLocation;
@@ -542,40 +771,84 @@ function generateProgramCode(node) {
             }
         }
         else if (booleanExpression.value === "!=") {
+            // Compare and set up the jump
+            var jump = getJumpKey();
+            var secondJump = getJumpKey();
 
+            compareXRegisterToMemory();
+
+            // The statement evaluates to false so it will jump but we want to execute the code then
+            // So it jumps to the statement that will jump to the code block
+            branchNotEquals(jump);
+
+            var beforeFalseCompare = _CodeLocation;
+
+
+            // The statement evaluates to true so we do not want to execute the code
+            // So we jump over everything
+            addGuaranteedJump();
+            branchNotEquals(secondJump);
+
+            // Get the code location before the block
+            var beginLocation = _CodeLocation;
+
+            generateProgramCode(block);
+
+            addGuaranteedJump();
+
+            // Compute the jump location to the conditional
+            var jumpToWhile  = (254 - _CodeLocation + startLocation).toString(16).toUpperCase();
+
+            // Jumps back to the beginning of the while
+            branchNotEquals(jumpToWhile);
+
+            // Get the ending location so that the while can jump over all of its code
+            var endLocation = _CodeLocation - beforeFalseCompare;
+
+            var jumpToCode  = (254 - _CodeLocation + beginLocation).toString(16).toUpperCase();
+
+            // Jumps to the beginning of the code
+            branchNotEquals(jumpToCode);
+
+            var fullJump = _CodeLocation - beginLocation;
+
+            endLocation = endLocation.toString(16).toUpperCase();
+            fullJump = fullJump.toString(16).toUpperCase();
+
+            if (endLocation.length === 1) {
+                endLocation = "0" + endLocation;
+            }
+
+            if (fullJump.length === 1) {
+                fullJump = "0" + fullJump;
+            }
+
+            for (var i = 0; i < _ProgramCode.length; i++) {
+                if (_ProgramCode[i] === jump) {
+                    _ProgramCode[i] = endLocation;
+                }
+
+                if (_ProgramCode[i] === secondJump) {
+                    _ProgramCode[i] = fullJump;
+                }
+            }
         }
         else if (booleanExpression.value === "true") {
             // Don't compare or jump because it will run forever
             generateProgramCode(block);
 
-            // Compare zero to one to jump back
-            _ProgramCode[_CodeLocation++] = "A9";
-            _ProgramCode[_CodeLocation++] = "00";
-
-            _ProgramCode[_CodeLocation++] = "8D";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
-
-
-            _ProgramCode[_CodeLocation++] = "A2";
-            _ProgramCode[_CodeLocation++] = "01";
-
-            _ProgramCode[_CodeLocation++] = "EC";
-            _ProgramCode[_CodeLocation++] = "00";
-            _ProgramCode[_CodeLocation++] = "00";
+            addGuaranteedJump();
 
             // Compute jump distance
             var jumpToWhile  = (254 - _CodeLocation + startLocation).toString(16).toUpperCase();
 
-            _ProgramCode[_CodeLocation++] = "D0";
-            _ProgramCode[_CodeLocation++] = jumpToWhile;
+            branchNotEquals(jumpToWhile);
         }
         // If it just false compute the jump to skip of the code block
         else if (booleanExpression.value === "false") {
             var jump = getJumpKey();
 
-            _ProgramCode[_CodeLocation++] = "D0";
-            _ProgramCode[_CodeLocation++] = jump;
+            branchNotEquals(jump);
 
             var beginLocation = _CodeLocation;
 
@@ -606,12 +879,9 @@ function addBooleanExpression(node) {
     else if (node.value === "false")
         return "00";
     else {
-        var value = _SymbolTable.currentScope.getSymbolValue(node);
+        var value = getReferenceKey(node);
 
-        if (value === "true")
-            return "01";
-        else if (value === "false")
-            return "00";
+        return value;
     }
 }
 
@@ -627,9 +897,9 @@ function addIntegerExpression(hex, node) {
         }
         // If it is an id get the symbol's value
         else if (node.value.length === 1 && isNaN(node.value)) {
-            var value = _SymbolTable.currentScope.getSymbolValue(node);
+            var value = getReferenceKey(node);
 
-            hex.push("0" + value);
+            hex.push(value);
         }
         else {
             hex.push("0" + node.value);
@@ -637,9 +907,9 @@ function addIntegerExpression(hex, node) {
     }
     // If it is an id get the symbol's value
     else if (node.value.length === 1 && isNaN(node.value)) {
-        var value = _SymbolTable.currentScope.getSymbolValue(node);
+        var value = getReferenceKey(node);
 
-        hex.push("0" + value);
+        hex.push(value);
     }
     else {
         hex.push("0" + node.value);
@@ -650,7 +920,6 @@ function addIntegerExpression(hex, node) {
 function getReferenceKey(node) {
     var id = node.value;
     var scope = _SymbolTable.currentScope.getSymbol(node).scope;
-    var type = _SymbolTable.currentScope.getSymbolType(node);
 
     // If it already in the table just return the key
     for (var key in _ReferenceTable) {
@@ -674,7 +943,7 @@ function getReferenceKey(node) {
 
     offset++;
 
-    _ReferenceTable["T" + entries] = {"id": id, "type": type, "scope":scope, "offset": offset};
+    _ReferenceTable["T" + entries] = {"id": id, "scope":scope, "offset": offset};
 
     return "T" + entries;
 }
@@ -715,4 +984,68 @@ function referenceBackPatch() {
             }
         }
     }
+}
+
+function loadYRegisterFromMemory(location) {
+    _ProgramCode[_CodeLocation++] = "AC";
+    _ProgramCode[_CodeLocation++] = location;
+    _ProgramCode[_CodeLocation++] = "00";
+}
+
+function loadAccumulatorFromMemory(location) {
+    _ProgramCode[_CodeLocation++] = "AD";
+    _ProgramCode[_CodeLocation++] = location;
+    _ProgramCode[_CodeLocation++] = "00";
+}
+
+function storeAccumulatorInMemory(location) {
+    _ProgramCode[_CodeLocation++] = "8D";
+    _ProgramCode[_CodeLocation++] = location;
+    _ProgramCode[_CodeLocation++] = "00";
+}
+
+function addWithCarryIntoMemory(location) {
+    _ProgramCode[_CodeLocation++] = "6D";
+    _ProgramCode[_CodeLocation++] = location;
+    _ProgramCode[_CodeLocation++] = "00";
+}
+
+function loadXRegisterFromMemory(location) {
+    _ProgramCode[_CodeLocation++] = "AE";
+    _ProgramCode[_CodeLocation++] = location;
+    _ProgramCode[_CodeLocation++] = "00";
+}
+
+function loadYRegisterWithConstant (hex) {
+    _ProgramCode[_CodeLocation++] = "A0";
+    _ProgramCode[_CodeLocation++] = hex;
+}
+
+function compareXRegisterToMemory() {
+    _ProgramCode[_CodeLocation++] = "EC";
+    _ProgramCode[_CodeLocation++] = "00";
+    _ProgramCode[_CodeLocation++] = "00";
+}
+
+function branchNotEquals(jump) {
+    _ProgramCode[_CodeLocation++] = "D0";
+    _ProgramCode[_CodeLocation++] = jump;
+}
+
+function addGuaranteedJump() {
+    // Compare zero to one to jump back
+    _ProgramCode[_CodeLocation++] = "A9";
+    _ProgramCode[_CodeLocation++] = "00";
+
+    _ProgramCode[_CodeLocation++] = "8D";
+    _ProgramCode[_CodeLocation++] = "00";
+    _ProgramCode[_CodeLocation++] = "00";
+
+
+    _ProgramCode[_CodeLocation++] = "A2";
+    _ProgramCode[_CodeLocation++] = "01";
+
+    _ProgramCode[_CodeLocation++] = "EC";
+    _ProgramCode[_CodeLocation++] = "00";
+    _ProgramCode[_CodeLocation++] = "00";
 }
